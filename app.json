@@ -1,0 +1,51 @@
+{
+  "expo": {
+    "name": "Sign Language App",
+    "slug": "sign-language-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon-light-32x32.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/icon-light-32x32.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1E3A5F"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.signlanguage.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Sign language тану үшін камера қажет",
+        "NSMicrophoneUsageDescription": "Дауысты текстке айналдыру үшін микрофон қажет"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon-light-32x32.png",
+        "backgroundColor": "#1E3A5F"
+      },
+      "package": "com.signlanguage.app",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/icon-light-32x32.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Sign language тану үшін камера қажет"
+        }
+      ],
+      "expo-web-browser"
+    ],
+    "scheme": "signlanguageapp"
+  }
+}

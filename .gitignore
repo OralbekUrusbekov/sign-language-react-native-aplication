@@ -1,0 +1,63 @@
+# React Native .gitignore
+
+# dependencies
+
+node_modules/
+npm-debug.log
+yarn-error.log
+yarn.lock
+
+# Expo
+
+.expo/
+.expo-shared/
+
+# React Native
+
+android/
+ios/build/
+ios/Pods/
+
+# Xcode
+
+*.xcworkspace
+*.xcuserdata
+*.xcodeproj/project.xcworkspace
+DerivedData/
+build/
+
+# Android
+
+.gradle/
+local.properties
+*.keystore
+*.jks
+
+# Logs
+
+logs
+*.log
+
+# macOS
+
+.DS_Store
+
+# Environment variables
+
+.env
+.env.local
+.env.development
+.env.production
+
+# Metro bundler
+
+.metro-cache
+
+# Testing
+
+coverage/
+
+# temporary files
+
+*.tmp
+*.temp
