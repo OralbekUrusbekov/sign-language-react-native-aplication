@@ -1,6 +1,5 @@
-import { API_BASE_URL, API_ENDPOINTS, DEFAULT_HEADERS, DEVICE_ID } from '@/config/api';
+import { AI_MODEL_URL, API_BASE_URL, API_ENDPOINTS, DEFAULT_HEADERS, DEVICE_ID } from '@/config/api';
 import { 
-  PredictionResponse, 
   WordItem, 
   BookItem, 
   Category, 
@@ -10,6 +9,8 @@ import {
 } from '@/types';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
+
+
 
 
 
@@ -52,54 +53,368 @@ export const checkHealth = async (): Promise<boolean> => {
 
 
 // ==========================================
+// Camera Management API
+// ==========================================
+
+export interface CameraInfo {
+  id: number;
+  status: 'working' | 'no_frame' | 'not_available';
+  frame_size?: number[];
+}
+
+export interface CamerasResponse {
+  status: string;
+  cameras: CameraInfo[];
+  current_camera: number;
+}
+
+export interface SetCameraResponse {
+  status: string;
+  cam_id: number;
+  message: string;
+}
+
+// Барлық камераларды алу
+export const getAvailableCameras = async (): Promise<CamerasResponse> => {
+  const response = await fetch(`${AI_MODEL_URL}/cameras`, {
+    method: 'GET',
+    headers: DEFAULT_HEADERS,
+  });
+  
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+  
+  return response.json();
+};
+
+// Камераны өзгерту
+export const setCamera = async (camId: number): Promise<SetCameraResponse> => {
+  const response = await fetch(`${AI_MODEL_URL}/camera/set`, {
+    method: 'POST',
+    headers: DEFAULT_HEADERS,
+    body: JSON.stringify({ cam_id: camId }),
+  });
+  
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+  
+  return response.json();
+};
+
+// Бір камераны тексеру
+export const testCamera = async (camId: number): Promise<any> => {
+  const response = await fetch(`${AI_MODEL_URL}/camera/test/${camId}`, {
+    method: 'GET',
+    headers: DEFAULT_HEADERS,
+  });
+  
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+  
+  return response.json();
+};
+
+
+
+// ==========================================
+// Recognition API - Flask AI Model
+// ==========================================
+// ==========================================
 // Recognition API - Flask AI Model
 // ==========================================
 
-interface RecognitionStatusResponse {
-  is_running: boolean;
-}
-
-interface ToggleResponse {
-  success: boolean;
-  message?: string;
-}
-
-interface Prediction {
+export interface Prediction {
   label: string;
   confidence: number;
 }
 
-interface PredictionsResponse {
+export interface PredictionResponse {
   status: 'success' | 'waiting' | 'error';
   current_prediction?: string;
   top3?: Prediction[];
   message?: string;
+  landmarks?: {
+    pose: {
+      x: number;
+      y: number;
+      z: number;
+      visibility?: number;
+    }[];
+    hand_0: {
+      x: number;
+      y: number;
+      z: number;
+      visibility?: number;
+    }[];
+    hand_1: {
+      x: number;
+      y: number;
+      z: number;
+      visibility?: number;
+    }[];
+  };
 }
 
+export interface RecognitionStatusResponse {
+  is_running: boolean;
+}
+
+export interface ToggleResponse {
+  success: boolean;
+  message?: string;
+}
+
+// Recognition статусын алу
 export const getRecognitionStatus = async (): Promise<RecognitionStatusResponse> => {
   const response = await fetch(API_ENDPOINTS.RECOGNITION_STATUS, {
     method: 'GET',
     headers: DEFAULT_HEADERS,
   });
-  return handleResponse<RecognitionStatusResponse>(response);
+  
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+  
+  return response.json();
 };
 
+// Тануды бастау/тоқтату
 export const toggleRecognition = async (action: 'start' | 'stop'): Promise<ToggleResponse> => {
   const response = await fetch(API_ENDPOINTS.TOGGLE_RECOGNITION, {
     method: 'POST',
     headers: DEFAULT_HEADERS,
     body: JSON.stringify({ action }),
   });
-  return handleResponse<ToggleResponse>(response);
+  
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+  
+  return response.json();
 };
 
-export const getCurrentPredictions = async (): Promise<PredictionsResponse> => {
-  const response = await fetch(API_ENDPOINTS.CURRENT_PREDICTIONS, {
-    method: 'GET',
-    headers: DEFAULT_HEADERS,
+// // === ЖАҢА: Бір кадрды жіберу және болжам алу ===
+// export const predictFrame = async (frameUri: string): Promise<PredictionResponse> => {
+//   const formData = new FormData();
+  
+//   // Файлды дайындау
+//   const filename = frameUri.split('/').pop() || 'frame.jpg';
+  
+//   // Android үшін URI түзету
+//   const normalizedUri = Platform.OS === 'android' 
+//     ? frameUri 
+//     : frameUri.replace('file://', '');
+  
+//   formData.append('frame', {
+//     uri: normalizedUri,
+//     type: 'image/jpeg',
+//     name: filename,
+//   } as any);
+  
+//   // Уақыт шектеуі
+//   const controller = new AbortController();
+//   const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 секунд
+  
+//   try {
+//     const response = await fetch(API_ENDPOINTS.PREDICT_FRAME, {
+//       method: 'POST',
+//       body: formData,
+//       signal: controller.signal,
+//       headers: {
+//         'Accept': 'application/json',
+//         // Content-Type автоматты түрде FormData орнатады
+//       },
+//     });
+    
+//     clearTimeout(timeoutId);
+    
+//     if (!response.ok) {
+//       const errorText = await response.text();
+//       throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+//     }
+    
+//     return response.json();
+//   } catch (error) {
+//     clearTimeout(timeoutId);
+//     throw error;
+//   }
+// };
+
+// ==========================================
+// Recognition API - Flask AI Model
+// ==========================================
+
+export const predictFrame = async (frameUri: string): Promise<PredictionResponse> => {
+  // ==================== ЛОГТАР ====================
+  const logAPIDebug = (message: string, data?: any) => {
+    console.log('🟣 [API DEBUG]', message, data ? data : '');
+  };
+  
+  const logAPISuccess = (message: string, data?: any) => {
+    console.log('🟢 [API SUCCESS]', message, data ? data : '');
+  };
+  
+  const logAPIError = (message: string, error?: any) => {
+    console.log('🔴 [API ERROR]', message, error ? error : '');
+  };
+  
+  const logAPIWarn = (message: string, data?: any) => {
+    console.log('🟡 [API WARN]', message, data ? data : '');
+  };
+
+  // ==================== БАСТАЛУЫ ====================
+  logAPIDebug('🚀 predictFrame шақырылды', {
+    frameUri,
+    platform: Platform.OS,
+    endpoint: API_ENDPOINTS.PREDICT_FRAME
   });
-  return handleResponse<PredictionsResponse>(response);
+
+  // ==================== FORMData ДАЙЫНДАУ ====================
+  try {
+    const formData = new FormData();
+    
+    // Файл атын алу
+    const filename = frameUri.split('/').pop() || 'frame.jpg';
+    logAPIDebug('📁 Файл аты:', filename);
+    
+    // URI түзету (платформаға байланысты)
+    const normalizedUri = Platform.OS === 'android' 
+      ? frameUri 
+      : frameUri.replace('file://', '');
+    
+    logAPIDebug('📁 Нормалданған URI:', {
+      original: frameUri,
+      normalized: normalizedUri,
+      platform: Platform.OS
+    });
+
+    // Файлдың бар-жоғын тексеру (тек Android емес жағдайда)
+    if (Platform.OS !== 'android') {
+      try {
+        const fileInfo = await FileSystem.getInfoAsync(normalizedUri);
+        logAPIDebug('📁 Файл ақпараты:', {
+          exists: fileInfo.exists,
+          size: fileInfo.exists ? fileInfo.size : 'N/A',
+          uri: fileInfo.uri
+        });
+        
+        if (!fileInfo.exists) {
+          logAPIError('❌ Файл табылмады!');
+        }
+      } catch (fsError) {
+        logAPIWarn('⚠️ Файл ақпаратын алу мүмкін емес:', fsError);
+      }
+    }
+
+    // FormData құру
+    formData.append('frame', {
+      uri: normalizedUri,
+      type: 'image/jpeg',
+      name: filename,
+    } as any);
+    
+    logAPISuccess('✅ FormData дайын');
+
+    // FormData мазмұнын тексеру (мүмкін болса)
+    logAPIDebug('📦 FormData мазмұны:', {
+      hasFrame: formData.has('frame'),
+      // @ts-ignore - тек тексеру үшін
+      frameValue: formData._parts?.find(p => p[0] === 'frame')?.[1]
+    });
+
+    // ==================== FETCH СҰРАУЫ ====================
+    logAPIDebug('📡 Серверге сұрау жіберілуде:', {
+      url: API_ENDPOINTS.PREDICT_FRAME,
+      method: 'POST',
+      timeout: 10000
+    });
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      logAPIError('⏱️ Request timeout (10 секунд)');
+      controller.abort();
+    }, 10000);
+
+    const startTime = Date.now();
+    
+    const response = await fetch(API_ENDPOINTS.PREDICT_FRAME, {
+      method: 'POST',
+      body: formData,
+      signal: controller.signal,
+      headers: {
+        'Accept': 'application/json',
+        // Content-Type автоматты түрде FormData орнатады
+      },
+    });
+
+    const endTime = Date.now();
+    clearTimeout(timeoutId);
+
+    logAPISuccess('📥 Жауап алынды:', {
+      status: response.status,
+      statusText: response.statusText,
+      time: `${endTime - startTime}ms`,
+      headers: Object.fromEntries(response.headers.entries())
+    });
+
+    // ==================== ЖАУАПТЫ ӨҢДЕУ ====================
+    if (!response.ok) {
+      const errorText = await response.text();
+      logAPIError('❌ HTTP қатесі:', {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText.substring(0, 500) // Ұзын болса кесеміз
+      });
+      
+      throw new Error(`HTTP error! status: ${response.status} - ${errorText.substring(0, 100)}`);
+    }
+
+    const responseText = await response.text();
+    logAPIDebug('📄 Жауап мәтіні (алғашқы 200 символ):', responseText.substring(0, 200));
+
+    let data: PredictionResponse;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      logAPIError('❌ JSON парсинг қатесі:', {
+        error: parseError,
+        text: responseText.substring(0, 200)
+      });
+      throw new Error('JSON парсинг қатесі');
+    }
+
+    logAPISuccess('✅ Жауап сәтті:', {
+      status: data.status,
+      current_prediction: data.current_prediction,
+      top3_count: data.top3?.length || 0,
+      message: data.message
+    });
+
+    if (data.top3 && data.top3.length > 0) {
+      logAPIDebug('📊 Top 3 болжамдар:', data.top3);
+    }
+
+    return data;
+
+  } catch (error) {
+    logAPIError('❌ predictFrame қатесі:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack?.split('\n')[0] : undefined
+    });
+    
+    // Қосымша желі қателерін тексеру
+    if (error instanceof TypeError && error.message.includes('Network request failed')) {
+      logAPIError('🌐 Желі қатесі: Серверге қосылу мүмкін емес');
+    }
+    
+    throw error;
+  }
 };
+
 
 // ==========================================
 // Words API - FastAPI Backend
