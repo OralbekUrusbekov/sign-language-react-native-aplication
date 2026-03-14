@@ -11,6 +11,10 @@ import {
   RefreshControl,
   Dimensions,
 } from 'react-native';
+
+import { useSettings } from '@/context/SettingsContext';
+import { useSignTranslation } from '@/i18n/sign';
+
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
@@ -46,6 +50,9 @@ interface Prediction {
 
 export default function SignLanguageScreen() {
   log('📱 Компонент жүктелді');
+
+  const { appLanguage } = useSettings();
+  const { t } = useSignTranslation();
   
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState<CameraType>('front');
@@ -306,6 +313,16 @@ const startFrameCapture = useCallback(() => {
     };
   }, []);
 
+    useEffect(() => {
+    if (!isRunning) {
+      setCurrentPrediction(t('ready'));
+    } else if (currentPrediction === t('stopped')) {
+      setCurrentPrediction(t('stopped'));
+    } else if (currentPrediction === t('collecting')) {
+      setCurrentPrediction(t('collecting'));
+    }
+  }, [appLanguage, isRunning]);
+
   // ==================== РЕНДЕР ====================
   
   log('🎨 Рендер:', { isConnected, isRunning, isProcessing, currentPrediction });
@@ -326,12 +343,10 @@ const startFrameCapture = useCallback(() => {
       <View style={styles.permissionContainer}>
         <View style={styles.permissionCard}>
           <Ionicons name="camera" size={64} color={Colors.primary} />
-          <Text style={styles.permissionTitle}>Камера қажет</Text>
-          <Text style={styles.permissionText}>
-            Им тілін тану үшін камера рұқсатын беріңіз
-          </Text>
+          <Text style={styles.permissionTitle}>{t('cameraRequired')}</Text>
+          <Text style={styles.permissionText}>{t('cameraPermissionText')}</Text>
           <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
-            <Text style={styles.permissionButtonText}>Рұқсат беру</Text>
+            <Text style={styles.permissionButtonText}>{t('grantPermission')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -342,14 +357,14 @@ const startFrameCapture = useCallback(() => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Им тілін тану</Text>
+        <Text style={styles.headerTitle}>{t('signLanguage')}</Text>
         <View style={styles.connectionStatus}>
           <View style={[
             styles.connectionDot,
             { backgroundColor: isConnected ? Colors.success : Colors.error }
           ]} />
           <Text style={styles.connectionText}>
-            {isConnected ? 'Қосылды' : 'Қосылмады'}
+            {isConnected ? t('connected') : t('disconnected')}
           </Text>
         </View>
       </View>
@@ -359,7 +374,7 @@ const startFrameCapture = useCallback(() => {
         <View style={styles.errorBanner}>
           <Text style={styles.errorText}>{connectionError}</Text>
           <TouchableOpacity style={styles.retryButton} onPress={checkConnection}>
-            <Text style={styles.retryButtonText}>Қайталау</Text>
+            <Text style={styles.retryButtonText}>{t('retry')}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -374,7 +389,7 @@ const startFrameCapture = useCallback(() => {
         {/* Camera Card */}
         <View style={styles.cameraCard}>
           <View style={styles.cameraCardHeader}>
-            <Text style={styles.cameraCardTitle}>Тікелей эфир</Text>
+            <Text style={styles.cameraCardTitle}>{t('liveStream')}</Text>
             <View style={styles.headerButtons}>
               {isRunning && (
                 <View style={styles.fpsContainer}>
@@ -389,119 +404,125 @@ const startFrameCapture = useCallback(() => {
           </View>
           
           <View style={styles.cameraContainer}>
- 
-  <CameraView
-ref={cameraRef}
-style={styles.camera}
-facing={facing}
-ratio="4:3"
-pictureSize="640x480"
-/>
+            <CameraView
+              ref={cameraRef}
+              style={styles.camera}
+              facing={facing}
+              ratio="4:3"
+              pictureSize="640x480"
+            />
 
-  <View style={StyleSheet.absoluteFill} pointerEvents="none">
-  <Svg width={overlayWidth} height={CAMERA_HEIGHT}>
+            {/* Камераны ауыстыру батырмасы */}
+            <TouchableOpacity style={styles.flipButton} onPress={toggleCameraFacing}>
+              <Ionicons 
+                name="camera-reverse-outline" 
+                size={24} 
+                color={Colors.white} 
+              />
+            </TouchableOpacity>
 
-    {/* Pose lines */}
-    {poseConnections.map(([start, end], index) => {
-      const p1 = landmarks?.pose?.[start];
-      const p2 = landmarks?.pose?.[end];
+            {/* Өңдеу индикаторы */}
+            {isProcessing && (
+              <View style={styles.processingIndicator}>
+                <ActivityIndicator size="small" color={Colors.white} />
+              </View>
+            )}
 
-      if (!p1 || !p2) return null;
+            <View style={StyleSheet.absoluteFill} pointerEvents="none">
+              <Svg width={overlayWidth} height={CAMERA_HEIGHT}>
+                {/* Pose lines */}
+                {poseConnections.map(([start, end], index) => {
+                  const p1 = landmarks?.pose?.[start];
+                  const p2 = landmarks?.pose?.[end];
+                  if (!p1 || !p2) return null;
+                  return (
+                    <Line
+                      key={`pose-line-${index}`}
+                      x1={xOffset + (1 - p1.x) * cameraActualWidth}
+                      y1={p1.y * CAMERA_HEIGHT}
+                      x2={xOffset + (1 - p2.x) * cameraActualWidth}
+                      y2={p2.y * CAMERA_HEIGHT}
+                      stroke="lime"
+                      strokeWidth="3"
+                    />
+                  );
+                })}
 
-      return (
-        <Line
-          key={`pose-line-${index}`}
-          x1={xOffset + (1 - p1.x) * cameraActualWidth}
-          y1={p1.y * CAMERA_HEIGHT}
-          x2={xOffset + (1 - p2.x) * cameraActualWidth}
-          y2={p2.y * CAMERA_HEIGHT}
-          stroke="lime"
-          strokeWidth="3"
-        />
-      );
-    })}
+                {/* Pose points */}
+                {[11,12,13,14,15,16].map((index) => {
+                  const point = landmarks?.pose?.[index];
+                  if (!point) return null;
+                  return (
+                    <Circle
+                      key={`pose-${index}`}
+                      cx={xOffset + (1 - point.x) * cameraActualWidth}
+                      cy={point.y * CAMERA_HEIGHT}
+                      r="5"
+                      fill="red"
+                    />
+                  );
+                })}
 
-    {/* Pose points */}
-    {[11,12,13,14,15,16].map((index) => {
-      const point = landmarks?.pose?.[index];
-      if (!point) return null;
+                {/* Hand 0 lines */}
+                {handConnections.map(([start, end], index) => {
+                  const p1 = landmarks?.hand_0?.[start];
+                  const p2 = landmarks?.hand_0?.[end];
+                  if (!p1 || !p2) return null;
+                  return (
+                    <Line
+                      key={`hand0-line-${index}`}
+                      x1={xOffset + (1 - p1.x) * cameraActualWidth}
+                      x2={xOffset + (1 - p2.x) * cameraActualWidth}
+                      y1={p1.y * CAMERA_HEIGHT}
+                      y2={p2.y * CAMERA_HEIGHT}
+                      stroke={hand0IsLeft ? 'yellow' : 'cyan'}
+                      strokeWidth="2"
+                    />
+                  );
+                })}
 
-      return (
-        <Circle
-          key={`pose-${index}`}
-          cx={xOffset + (1 - point.x) * cameraActualWidth}
-          cy={point.y * CAMERA_HEIGHT}
-          r="5"
-          fill="red"
-        />
-      );
-    })}
+                {/* Hand 0 points */}
+                {landmarks?.hand_0?.map((point: any, index: number) => (
+                  <Circle
+                    key={`hand0-point-${index}`}
+                    cx={xOffset + (1 - point.x) * cameraActualWidth}
+                    cy={point.y * CAMERA_HEIGHT}
+                    r="3"
+                    fill={hand0IsLeft ? 'yellow' : 'cyan'}
+                  />
+                ))}
 
-    {/* Hand 0 lines */}
-    {handConnections.map(([start, end], index) => {
-      const p1 = landmarks?.hand_0?.[start];
-      const p2 = landmarks?.hand_0?.[end];
+                {/* Hand 1 lines */}
+                {handConnections.map(([start, end], index) => {
+                  const p1 = landmarks?.hand_1?.[start];
+                  const p2 = landmarks?.hand_1?.[end];
+                  if (!p1 || !p2) return null;
+                  return (
+                    <Line
+                      key={`hand1-line-${index}`}
+                      x1={xOffset + (1 - p1.x) * cameraActualWidth}
+                      y1={p1.y * CAMERA_HEIGHT}
+                      x2={xOffset + (1 - p2.x) * cameraActualWidth}
+                      y2={p2.y * CAMERA_HEIGHT}
+                      stroke={hand0IsLeft ? 'cyan' : 'yellow'}
+                      strokeWidth="2"
+                    />
+                  );
+                })}
 
-      if (!p1 || !p2) return null;
-
-      return (
-        <Line
-          key={`hand0-line-${index}`}
-          x1={xOffset + (1 - p1.x) * cameraActualWidth}
-x2={xOffset + (1 - p2.x) * cameraActualWidth}
-          y1={p1.y * CAMERA_HEIGHT}
-          y2={p2.y * CAMERA_HEIGHT}
-          stroke={hand0IsLeft ? 'yellow' : 'cyan'}
-          strokeWidth="2"
-        />
-      );
-    })}
-
-    {/* Hand 0 points */}
-    {landmarks?.hand_0?.map((point: any, index: number) => (
-      <Circle
-        key={`hand0-point-${index}`}
-        cx={xOffset + (1 - point.x) * cameraActualWidth}
-        cy={point.y * CAMERA_HEIGHT}
-        r="3"
-        fill={hand0IsLeft ? 'yellow' : 'cyan'}
-      />
-    ))}
-
-    {/* Hand 1 lines */}
-    {handConnections.map(([start, end], index) => {
-  const p1 = landmarks?.hand_1?.[start];
-  const p2 = landmarks?.hand_1?.[end];
-
-  if (!p1 || !p2) return null;
-
-  return (
-    <Line
-      key={`hand1-line-${index}`}
-      x1={xOffset + (1 - p1.x) * cameraActualWidth}
-      y1={p1.y * CAMERA_HEIGHT}
-      x2={xOffset + (1 - p2.x) * cameraActualWidth}
-      y2={p2.y * CAMERA_HEIGHT}
-      stroke={hand0IsLeft ? 'cyan' : 'yellow'}
-      strokeWidth="2"
-    />
-  );
-})}
-
-    {/* Hand 1 points */}
-    {landmarks?.hand_1?.map((point: any, index: number) => (
-      <Circle
-        key={`hand1-point-${index}`}
-        cx={xOffset + (1 - point.x) * cameraActualWidth}
-        cy={point.y * CAMERA_HEIGHT}
-        r="3"
-        fill={hand0IsLeft ? 'cyan' : 'yellow'}
-      />
-    ))}
-
-  </Svg>
-</View>
-</View>
+                {/* Hand 1 points */}
+                {landmarks?.hand_1?.map((point: any, index: number) => (
+                  <Circle
+                    key={`hand1-point-${index}`}
+                    cx={xOffset + (1 - point.x) * cameraActualWidth}
+                    cy={point.y * CAMERA_HEIGHT}
+                    r="3"
+                    fill={hand0IsLeft ? 'cyan' : 'yellow'}
+                  />
+                ))}
+              </Svg>
+            </View>
+          </View>
           
           {/* Control Buttons */}
           <View style={styles.controlButtons}>
@@ -520,7 +541,7 @@ x2={xOffset + (1 - p2.x) * cameraActualWidth}
                 color={Colors.white} 
               />
               <Text style={styles.mainButtonText}>
-                {isRunning ? 'Тоқтату' : 'Бастау'}
+                {isRunning ? t('stop') : t('start')}
               </Text>
             </TouchableOpacity>
             
@@ -532,7 +553,7 @@ x2={xOffset + (1 - p2.x) * cameraActualWidth}
                 disabled={!isRunning}
               >
                 <Ionicons name="camera" size={20} color={Colors.white} />
-                <Text style={styles.testButtonText}>Кадр</Text>
+                <Text style={styles.testButtonText}>{t('frame')}</Text>
               </TouchableOpacity>
               
               <TouchableOpacity
@@ -540,7 +561,7 @@ x2={xOffset + (1 - p2.x) * cameraActualWidth}
                 onPress={testConnection}
               >
                 <Ionicons name="wifi" size={20} color={Colors.white} />
-                <Text style={styles.testButtonText}>Тест</Text>
+                <Text style={styles.testButtonText}>{t('test')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -548,20 +569,20 @@ x2={xOffset + (1 - p2.x) * cameraActualWidth}
 
         {/* Recognition Results Card */}
         <View style={styles.resultsCard}>
-          <Text style={styles.resultsCardTitle}>Тану нәтижесі</Text>
+          <Text style={styles.resultsCardTitle}>{t('recognitionResult')}</Text>
           
           {/* Current Prediction */}
           <View style={styles.currentPrediction}>
-            <Text style={styles.currentPredictionLabel}>Ағымдағы сөз</Text>
+            <Text style={styles.currentPredictionLabel}>{t('currentWord')}</Text>
             <View style={[
               styles.currentPredictionBox,
-              currentPrediction === 'Кадрлар жиналуда...' && styles.waitingBox,
-              currentPrediction === 'Тоқтатылды' && styles.stoppedBox,
+              currentPrediction === t('collecting') && styles.waitingBox,
+              currentPrediction === t('stopped') && styles.stoppedBox,
             ]}>
               <Text style={[
                 styles.currentPredictionText,
-                currentPrediction === 'Кадрлар жиналуда...' && styles.waitingText,
-                currentPrediction === 'Тоқтатылды' && styles.stoppedText,
+                currentPrediction === t('collecting') && styles.waitingText,
+                currentPrediction === t('stopped') && styles.stoppedText,
               ]}>
                 {currentPrediction}
               </Text>
@@ -570,7 +591,7 @@ x2={xOffset + (1 - p2.x) * cameraActualWidth}
           
           {/* Top 3 Predictions */}
           <View style={styles.top3Container}>
-            <Text style={styles.top3Title}>Үздік 3 болжам</Text>
+            <Text style={styles.top3Title}>{t('top3')}</Text>
             {[0, 1, 2].map((index) => {
               const pred = top3Predictions[index];
               const colors = [Colors.primary, Colors.gray500, Colors.secondary];
@@ -606,7 +627,7 @@ x2={xOffset + (1 - p2.x) * cameraActualWidth}
         {/* History Card */}
         <View style={styles.historyCard}>
           <View style={styles.historyHeader}>
-            <Text style={styles.historyTitle}>Тану тарихы</Text>
+            <Text style={styles.historyTitle}>{t('history')}</Text>
             {history.length > 0 && (
               <TouchableOpacity onPress={clearHistory}>
                 <Ionicons name="trash-outline" size={20} color={Colors.gray500} />
@@ -617,37 +638,36 @@ x2={xOffset + (1 - p2.x) * cameraActualWidth}
             {history.length > 0 ? (
               <Text style={styles.historyText}>{history.join(' ')}</Text>
             ) : (
-              <Text style={styles.historyPlaceholder}>
-                Әлі ешқандай сөз танылмады
-              </Text>
+              <Text style={styles.historyPlaceholder}>{t('noWords')}</Text>
             )}
           </View>
         </View>
 
         {/* Instructions Card */}
         <View style={styles.instructionsCard}>
-          <Text style={styles.instructionsTitle}>Нұсқаулық</Text>
+          <Text style={styles.instructionsTitle}>{t('instructions')}</Text>
           <View style={styles.instructionItem}>
             <Ionicons name="person-outline" size={20} color={Colors.primary} />
-            <Text style={styles.instructionText}>Камера алдына тұрыңыз</Text>
+            <Text style={styles.instructionText}>{t('instruction1')}</Text>
           </View>
           <View style={styles.instructionItem}>
             <Ionicons name="sunny-outline" size={20} color={Colors.primary} />
-            <Text style={styles.instructionText}>Жарық жақсы түсуі керек</Text>
+            <Text style={styles.instructionText}>{t('instruction2')}</Text>
           </View>
           <View style={styles.instructionItem}>
             <Ionicons name="hand-left-outline" size={20} color={Colors.primary} />
-            <Text style={styles.instructionText}>Қолдарыңыз көрініп тұруы керек</Text>
+            <Text style={styles.instructionText}>{t('instruction3')}</Text>
           </View>
           <View style={styles.instructionItem}>
             <Ionicons name="time-outline" size={20} color={Colors.primary} />
-            <Text style={styles.instructionText}>~2.5 секунд видео қажет</Text>
+            <Text style={styles.instructionText}>{t('instruction4')}</Text>
           </View>
         </View>
       </ScrollView>
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {

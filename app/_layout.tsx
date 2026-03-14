@@ -5,6 +5,7 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet } from 'react-native';
+import { SettingsProvider } from '@/context/SettingsContext';
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -25,6 +26,7 @@ export default function RootLayout() {
   }
 
   return (
+    <SettingsProvider>
     <GestureHandlerRootView style={styles.container}>
       <StatusBar style="auto" />
       <Stack screenOptions={{ headerShown: false }}>
@@ -32,6 +34,7 @@ export default function RootLayout() {
         <Stack.Screen name="admin" options={{ headerShown: false }} />
       </Stack>
     </GestureHandlerRootView>
+    </SettingsProvider>
   );
 }
 

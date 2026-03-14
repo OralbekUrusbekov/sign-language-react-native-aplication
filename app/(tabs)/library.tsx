@@ -22,6 +22,8 @@ import { Colors, Typography, Spacing, BorderRadius, Shadows } from '@/constants/
 import { BookItem } from '@/types';
 import { getBooks, getBookCategories, getDownloadedBooks, markBookDownloaded, updateReadingProgress } from '@/services/api';
 import { DEVICE_ID, API_BASE_URL } from '@/config/api';
+import { useSettings } from '@/context/SettingsContext';
+import { useLibraryTranslation } from '@/i18n/library';
 
 // Сақталған кітаптар кілті
 const STORAGE_KEYS = {
@@ -29,18 +31,30 @@ const STORAGE_KEYS = {
 };
 
 export default function LibraryScreen() {
+  const { appLanguage } = useSettings();
+  const { t } = useLibraryTranslation();
+  
   const [books, setBooks] = useState<BookItem[]>([]);
   const [categories, setCategories] = useState<{ id: string; name: string; count: number }[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [downloadingIds, setDownloadingIds] = useState<string[]>([]);
   const [downloadedIds, setDownloadedIds] = useState<Set<string>>(new Set());
-  const [downloadedBooks, setDownloadedBooks] = useState<Map<string, string>>(new Map()); // bookId -> localPath
+  const [downloadedBooks, setDownloadedBooks] = useState<Map<string, string>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
+
+  // Категория атауларын аудару
+  const getCategoryName = useCallback((categoryId: string, originalName: string) => {
+    const categoryKey = categoryId.replace(/-/g, '_');
+    const translated = t(`categories.${categoryKey}`);
+    
+    // Егер аударма табылмаса, оригинал атауды қайтару
+    return translated !== `categories.${categoryKey}` ? translated : originalName;
+  }, [t]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [appLanguage]); // Тіл ауысқанда қайта жүктеу
 
   // Сақталған жүктеулерді жүктеу
   const loadSavedDownloads = useCallback(async () => {
@@ -84,7 +98,7 @@ export default function LibraryScreen() {
     for (const [bookId, filePath] of map.entries()) {
       try {
         const fileInfo = await FileSystem.getInfoAsync(filePath);
-        if (fileInfo.exists && fileInfo.size > 1000) {
+        if (fileInfo.exists && fileInfo.size && fileInfo.size > 1000) {
           validMap.set(bookId, filePath);
         }
       } catch (error) {
@@ -108,10 +122,21 @@ export default function LibraryScreen() {
       ]);
 
       setBooks(booksData);
-      setCategories([
-        { id: 'all', name: 'Barlygy', count: booksData.length },
-        ...categoriesData,
-      ]);
+      
+      // Категорияларды аударылған атаулармен орнату
+      const translatedCategories = [
+        { 
+          id: 'all', 
+          name: t('categories.all'), 
+          count: booksData.length 
+        },
+        ...categoriesData.map(cat => ({
+          ...cat,
+          name: getCategoryName(cat.id, cat.name)
+        }))
+      ];
+      
+      setCategories(translatedCategories);
 
       // Сақталған жүктеулерді тексеру
       const validMap = await validateDownloadedFiles(downloadedBooks);
@@ -124,7 +149,7 @@ export default function LibraryScreen() {
 
     } catch (error) {
       console.log('Error loading library data:', error);
-      Alert.alert('Qate', 'Kitaphanany júkteu múmkin bolmady');
+      Alert.alert(t('error'), t('downloadError'));
     } finally {
       setIsLoading(false);
     }
@@ -198,39 +223,39 @@ export default function LibraryScreen() {
       // Сақтау
       await saveDownloads(newDownloadedBooks);
 
-      Alert.alert('Júkteldi', `"${book.title}" sátti júkteldi!`);
+      Alert.alert(t('downloadSuccess', { title: book.title }));
 
     } catch (error) {
       console.log('Download error:', error);
-      Alert.alert('Qate', 'Kitapty júkteu múmkin bolmady');
+      Alert.alert(t('error'), t('downloadError'));
     } finally {
       setDownloadingIds(prev => prev.filter(id => id !== book.id));
     }
   };
 
-  // Жүктелген кітапты өшіру функциясы (қажет болса)
-  const deleteDownloadedBook = async (bookId: string) => {
+  // Жүктелген кітапты өшіру функциясы
+  const deleteDownloadedBook = async (book: BookItem) => {
     try {
-      const filePath = downloadedBooks.get(bookId);
+      const filePath = downloadedBooks.get(book.id);
       if (filePath) {
         await FileSystem.deleteAsync(filePath);
         
         const newDownloadedBooks = new Map(downloadedBooks);
-        newDownloadedBooks.delete(bookId);
+        newDownloadedBooks.delete(book.id);
         
         const newDownloadedIds = new Set(downloadedIds);
-        newDownloadedIds.delete(bookId);
+        newDownloadedIds.delete(book.id);
         
         setDownloadedBooks(newDownloadedBooks);
         setDownloadedIds(newDownloadedIds);
         
         await saveDownloads(newDownloadedBooks);
         
-        Alert.alert('Óshirildi', 'Kitap júklemelerden óshirildi');
+        Alert.alert(t('deleteSuccess'));
       }
     } catch (error) {
       console.log('Delete error:', error);
-      Alert.alert('Qate', 'Kitap óshirilmedi');
+      Alert.alert(t('error'), t('deleteError'));
     }
   };
 
@@ -240,11 +265,11 @@ export default function LibraryScreen() {
 
       if (!fileUri) {
         Alert.alert(
-          'Júkteu qajet',
-          'Bul kitap áli júktelmegen.',
+          t('downloadRequired'),
+          t('downloadRequiredMessage'),
           [
-            { text: 'Boldyrmau', style: 'cancel' },
-            { text: 'Júkteu', onPress: () => downloadBook(book) },
+            { text: t('cancel'), style: 'cancel' },
+            { text: t('download'), onPress: () => downloadBook(book) },
           ]
         );
         return;
@@ -253,7 +278,7 @@ export default function LibraryScreen() {
       const fileInfo = await FileSystem.getInfoAsync(fileUri);
 
       if (!fileInfo.exists) {
-        Alert.alert('Qate', 'PDF faıly tabylmady');
+        Alert.alert(t('error'), t('fileNotFound'));
         return;
       }
 
@@ -276,7 +301,7 @@ export default function LibraryScreen() {
             if (await Sharing.isAvailableAsync()) {
               await Sharing.shareAsync(fileUri, {
                 mimeType: 'application/pdf',
-                dialogTitle: 'PDF ашу',
+                dialogTitle: 'PDF Open',
                 UTI: 'com.adobe.pdf',
               });
             }
@@ -290,7 +315,7 @@ export default function LibraryScreen() {
 
     } catch (error) {
       console.log('Open error:', error);
-      Alert.alert('Qate', 'PDF ашу мүмкін болмады');
+      Alert.alert(t('error'), t('openError'));
     }
   };
 
@@ -308,17 +333,17 @@ export default function LibraryScreen() {
               dialogTitle: book.title
             });
           } else {
-            Alert.alert('Aqparat', 'Bolisu múmkin emes');
+            Alert.alert(t('error'), t('shareNotAvailable'));
           }
         } else {
-          Alert.alert('Qate', 'PDF faıly tabylmady');
+          Alert.alert(t('error'), t('fileNotFound'));
         }
       } else {
-        Alert.alert('Aqparat', 'Aldymen kitapty júkteńiz');
+        Alert.alert(t('error'), t('downloadRequiredMessage'));
       }
     } catch (error) {
       console.log('Share error:', error);
-      Alert.alert('Qate', 'Bolisu múmkin bolmady');
+      Alert.alert(t('error'), t('shareError'));
     }
   };
 
@@ -391,7 +416,7 @@ export default function LibraryScreen() {
           <View style={styles.bookMeta}>
             <View style={styles.bookMetaItem}>
               <Ionicons name="document-text" size={14} color="#95A5A6" />
-              <Text style={styles.bookMetaText}>{item.pages} bet</Text>
+              <Text style={styles.bookMetaText}>{item.pages} {t('pages')}</Text>
             </View>
             {item.fileSize && (
               <View style={styles.bookMetaItem}>
@@ -409,31 +434,30 @@ export default function LibraryScreen() {
                   onPress={() => openBook(item)}
                 >
                   <Ionicons name="eye" size={18} color="#6C5CE7" />
-                  <Text style={styles.bookActionText}>Ashu</Text>
+                  <Text style={styles.bookActionText}>{t('open')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.bookActionButton}
                   onPress={() => shareBook(item)}
                 >
                   <Ionicons name="share-social" size={18} color="#6C5CE7" />
-                  <Text style={styles.bookActionText}>Bolisu</Text>
+                  <Text style={styles.bookActionText}>{t('share')}</Text>
                 </TouchableOpacity>
-                {/* Өшіру опциясы (қажет болса) */}
                 <TouchableOpacity
                   style={styles.bookActionButton}
                   onPress={() => {
                     Alert.alert(
-                      'Óshiru',
-                      `"${item.title}" kitabyn júklemelerden óshiruge sensiz be?`,
+                      t('deleteConfirm'),
+                      t('deleteConfirmMessage', { title: item.title }),
                       [
-                        { text: 'Boldyrma', style: 'cancel' },
-                        { text: 'Óshiru', onPress: () => deleteDownloadedBook(item.id), style: 'destructive' }
+                        { text: t('cancel'), style: 'cancel' },
+                        { text: t('delete'), onPress: () => deleteDownloadedBook(item), style: 'destructive' }
                       ]
                     );
                   }}
                 >
                   <Ionicons name="trash-outline" size={18} color="#FF7675" />
-                  <Text style={[styles.bookActionText, { color: '#FF7675' }]}>Óshiru</Text>
+                  <Text style={[styles.bookActionText, { color: '#FF7675' }]}>{t('delete')}</Text>
                 </TouchableOpacity>
               </>
             ) : (
@@ -445,12 +469,12 @@ export default function LibraryScreen() {
                 {isDownloading ? (
                   <>
                     <ActivityIndicator size="small" color="#FFFFFF" />
-                    <Text style={styles.downloadButtonText}>Júktelude...</Text>
+                    <Text style={styles.downloadButtonText}>{t('downloading')}</Text>
                   </>
                 ) : (
                   <>
                     <Ionicons name="download" size={18} color="#FFFFFF" />
-                    <Text style={styles.downloadButtonText}>Júkteu</Text>
+                    <Text style={styles.downloadButtonText}>{t('download')}</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -465,7 +489,7 @@ export default function LibraryScreen() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#6C5CE7" />
-        <Text style={styles.loadingText}>Kitaphanany júktep jatyrmyz...</Text>
+        <Text style={styles.loadingText}>{t('loading')}</Text>
       </View>
     );
   }
@@ -473,8 +497,8 @@ export default function LibraryScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Kitaphana</Text>
-        <Text style={styles.headerSubtitle}>PDF kitaptar men materyaldar</Text>
+        <Text style={styles.headerTitle}>{t('title')}</Text>
+        <Text style={styles.headerSubtitle}>{t('subtitle')}</Text>
       </View>
 
       <View style={styles.searchContainer}>
@@ -482,7 +506,7 @@ export default function LibraryScreen() {
           <Ionicons name="search" size={20} color="#95A5A6" />
           <TextInput
             style={styles.searchInput}
-            placeholder="Kitap nemese avtor izdeu..."
+            placeholder={t('searchPlaceholder')}
             placeholderTextColor="#95A5A6"
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -512,10 +536,8 @@ export default function LibraryScreen() {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="book-outline" size={64} color="#BDC3C7" />
-            <Text style={styles.emptyTitle}>Kitaptar tabylmady</Text>
-            <Text style={styles.emptySubtitle}>
-              Basqa sanatty tańdańyz nemese izdeudy ozgertiníz
-            </Text>
+            <Text style={styles.emptyTitle}>{t('emptyTitle')}</Text>
+            <Text style={styles.emptySubtitle}>{t('emptySubtitle')}</Text>
           </View>
         }
         ListFooterComponent={<View style={styles.bottomPadding} />}

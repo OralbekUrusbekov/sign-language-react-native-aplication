@@ -19,6 +19,8 @@ import { getUserSettings, updateUserSettings, resetUserSettings } from '@/servic
 import { DEVICE_ID, setDeviceId, API_BASE_URL } from '@/config/api';
 import * as Device from 'expo-device';
 import { router } from 'expo-router';
+import { useSettings } from '@/context/SettingsContext';
+import { useSettingsTranslation } from '@/i18n/settings';
 
 type SettingItemProps = {
   icon: string;
@@ -51,10 +53,23 @@ function SettingItem({ icon, title, subtitle, onPress, rightElement, iconColor }
 }
 
 export default function SettingsScreen() {
+  const { t } = useSettingsTranslation();
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [deviceId, setLocalDeviceId] = useState('');
+
+  const {
+    appLanguage,
+    speechLanguage,
+    speechRate,
+    speechPitch,
+  
+    setAppLanguage,
+    setSpeechLanguage,
+    setSpeechRate,
+    setSpeechPitch
+  } = useSettings();
 
   useEffect(() => {
     initializeDevice();
@@ -62,8 +77,8 @@ export default function SettingsScreen() {
 
   const initializeDevice = async () => {
     try {
-      // Generate unique device ID
       let id = DEVICE_ID;
+
       if (!id) {
         if (Device.isDevice) {
           id = `${Device.brand}_${Device.modelName}_${Date.now()}`;
@@ -77,6 +92,8 @@ export default function SettingsScreen() {
       // Load settings
       const userSettings = await getUserSettings(id);
       setSettings(userSettings);
+      setSpeechRate(userSettings.speech_rate);
+      setSpeechPitch(userSettings.speech_pitch);
     } catch (error) {
       console.log('Error initializing device:', error);
       // Use default settings
@@ -97,14 +114,23 @@ export default function SettingsScreen() {
 
   const updateSetting = async <K extends keyof UserSettings>(key: K, value: UserSettings[K]) => {
     if (!settings || !deviceId) return;
-    
+
     try {
       setIsSaving(true);
+
       const newSettings = { ...settings, [key]: value };
       setSettings(newSettings);
+
       await updateUserSettings(deviceId, { [key]: value });
+
+      // CONTEXT UPDATE
+      if (key === 'language') setAppLanguage(value as any);
+      if (key === 'speech_rate') setSpeechRate(value as number);
+      if (key === 'speech_pitch') setSpeechPitch(value as number);
+
     } catch (error) {
       console.log('Error updating setting:', error);
+      Alert.alert(t('error'), t('errorSaving'));
     } finally {
       setIsSaving(false);
     }
@@ -112,103 +138,80 @@ export default function SettingsScreen() {
 
   const handleLanguageChange = () => {
     Alert.alert(
-      'Tildi tańdańyz',
+      t('appLanguageTitle'),
       '',
       [
-        { text: 'Qazaqsha', onPress: () => updateSetting('language', 'kz') },
-        { text: 'Russkiı', onPress: () => updateSetting('language', 'ru') },
-        { text: 'English', onPress: () => updateSetting('language', 'en') },
-        { text: 'Boldyrmau', style: 'cancel' },
+        { text: t('languages.kz'), onPress: () => setAppLanguage('kz') },
+        { text: t('languages.ru'), onPress: () => setAppLanguage('ru') },
+        { text: t('languages.en'), onPress: () => setAppLanguage('en') },
+        { text: t('cancel'), style: 'cancel' },
+      ]
+    );
+  };
+
+  const handleSpeechLanguageChange = () => {
+    Alert.alert(
+      t('speechLanguageTitle'),
+      '',
+      [
+        { text: t('languages.kz'), onPress: () => setSpeechLanguage('kz') },
+        { text: t('languages.ru'), onPress: () => setSpeechLanguage('ru') },
+        { text: t('languages.en'), onPress: () => setSpeechLanguage('en') },
+        { text: t('cancel'), style: 'cancel' },
       ]
     );
   };
 
   const handleThemeChange = () => {
     Alert.alert(
-      'Tema tańdańyz',
+      t('themeTitle'),
       '',
       [
-        { text: 'Jaryq', onPress: () => updateSetting('theme', 'light') },
-        { text: 'Qarańǵy', onPress: () => updateSetting('theme', 'dark') },
-        { text: 'Júıe', onPress: () => updateSetting('theme', 'system') },
-        { text: 'Boldyrmau', style: 'cancel' },
+        { text: t('themes.light'), onPress: () => updateSetting('theme', 'light') },
+        { text: t('themes.dark'), onPress: () => updateSetting('theme', 'dark') },
+        { text: t('themes.system'), onPress: () => updateSetting('theme', 'system') },
+        { text: t('cancel'), style: 'cancel' },
       ]
     );
   };
 
   const handleCameraQuality = () => {
     Alert.alert(
-      'Kamera sapasy',
+      t('qualityTitle'),
       '',
       [
-        { text: 'Tomen (480p)', onPress: () => updateSetting('camera_quality', 'low') },
-        { text: 'Ortasha (720p)', onPress: () => updateSetting('camera_quality', 'medium') },
-        { text: 'Joǵary (1080p)', onPress: () => updateSetting('camera_quality', 'high') },
-        { text: 'Boldyrmau', style: 'cancel' },
+        { text: t('qualities.low'), onPress: () => updateSetting('camera_quality', 'low') },
+        { text: t('qualities.medium'), onPress: () => updateSetting('camera_quality', 'medium') },
+        { text: t('qualities.high'), onPress: () => updateSetting('camera_quality', 'high') },
+        { text: t('cancel'), style: 'cancel' },
       ]
-    );
-  };
-
-  const handleResetSettings = () => {
-    Alert.alert(
-      'Baptaulardy qalpyna keltiru',
-      'Barlyq baptaular bastapqy kúıge qaıtarylady. Jalǵastyryńyz ba?',
-      [
-        { text: 'Boldyrmau', style: 'cancel' },
-        { 
-          text: 'Qalpyna keltiru', 
-          style: 'destructive',
-          onPress: async () => {
-            if (deviceId) {
-              await resetUserSettings(deviceId);
-              await initializeDevice();
-              Alert.alert('Daıyn', 'Baptaular qalpyna keltirildi');
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleSupport = () => {
-    Linking.openURL('mailto:support@signlanguageapp.kz');
-  };
-
-  const handlePrivacy = () => {
-    Alert.alert('Qupıalylyq saıasaty', 'Qupıalylyq saıasaty betine ótu...');
-  };
-
-  const handleAbout = () => {
-    Alert.alert(
-      'Qosymsha turaly',
-      `Sign Language App\nNusqa: 1.0.0\n\nDevice ID: ${deviceId}\nAPI: ${API_BASE_URL}\n\nBul qosymsha esitu qabileti shekteuli adamdarǵa komektasu úshin jasaldy.\n\n© 2024 Sign Language App`,
     );
   };
 
   const getLanguageName = (lang: string) => {
     switch (lang) {
-      case 'kz': return 'Qazaqsha';
-      case 'ru': return 'Russkiı';
-      case 'en': return 'English';
-      default: return 'Qazaqsha';
+      case 'kz': return t('languages.kz');
+      case 'ru': return t('languages.ru');
+      case 'en': return t('languages.en');
+      default: return t('languages.kz');
     }
   };
 
   const getThemeName = (theme: string) => {
     switch (theme) {
-      case 'light': return 'Jaryq';
-      case 'dark': return 'Qarańǵy';
-      case 'system': return 'Júıe';
-      default: return 'Jaryq';
+      case 'light': return t('themes.light');
+      case 'dark': return t('themes.dark');
+      case 'system': return t('themes.system');
+      default: return t('themes.light');
     }
   };
 
   const getQualityName = (quality: string) => {
     switch (quality) {
-      case 'low': return 'Tomen (480p)';
-      case 'medium': return 'Ortasha (720p)';
-      case 'high': return 'Joǵary (1080p)';
-      default: return 'Joǵary (1080p)';
+      case 'low': return t('qualities.low');
+      case 'medium': return t('qualities.medium');
+      case 'high': return t('qualities.high');
+      default: return t('qualities.high');
     }
   };
 
@@ -216,7 +219,7 @@ export default function SettingsScreen() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={Colors.primary} />
-        <Text style={styles.loadingText}>Baptaulardy júktep jatyrmyz...</Text>
+        <Text style={styles.loadingText}>{t('loading')}</Text>
       </View>
     );
   }
@@ -225,35 +228,37 @@ export default function SettingsScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Baptaular</Text>
-        <Text style={styles.headerSubtitle}>Qosymshany baptau</Text>
+        <Text style={styles.headerTitle}>{t('title')}</Text>
+        <Text style={styles.headerSubtitle}>{t('subtitle')}</Text>
         {isSaving && (
-          <ActivityIndicator size="small" color={Colors.white} style={styles.savingIndicator} />
+          <View style={styles.savingIndicator}>
+            <ActivityIndicator size="small" color={Colors.white} />
+          </View>
         )}
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* General Settings */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Jalpy</Text>
+          <Text style={styles.sectionTitle}>{t('general')}</Text>
           <View style={styles.sectionContent}>
             <SettingItem
               icon="language"
-              title="Til"
-              subtitle={getLanguageName(settings?.language || 'kz')}
+              title={t('language')}
+              subtitle={getLanguageName(appLanguage)}
               onPress={handleLanguageChange}
               iconColor={Colors.secondary}
             />
             <SettingItem
               icon="color-palette"
-              title="Tema"
+              title={t('theme')}
               subtitle={getThemeName(settings?.theme || 'light')}
               onPress={handleThemeChange}
               iconColor="#6C5CE7"
             />
             <SettingItem
               icon="camera"
-              title="Kamera sapasy"
+              title={t('cameraQuality')}
               subtitle={getQualityName(settings?.camera_quality || 'high')}
               onPress={handleCameraQuality}
               iconColor="#45B7D1"
@@ -261,55 +266,67 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-
-
         {/* Speech Settings */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Soıleu</Text>
+          <Text style={styles.sectionTitle}>{t('speech')}</Text>
           <View style={styles.sectionContent}>
+            <SettingItem
+              icon="mic"
+              title={t('speechLanguage')}
+              subtitle={getLanguageName(speechLanguage)}
+              onPress={handleSpeechLanguageChange}
+              iconColor="#FF8C42"
+            />
+            
             <View style={styles.sliderItem}>
               <View style={styles.sliderHeader}>
                 <View style={[styles.settingIcon, { backgroundColor: '#96CEB4' }]}>
                   <Ionicons name="speedometer" size={20} color={Colors.white} />
                 </View>
-                <Text style={styles.settingTitle}>Soıleu jyldamdyǵy</Text>
-                <Text style={styles.sliderValue}>{(settings?.speech_rate || 1.0).toFixed(1)}x</Text>
+                <Text style={styles.settingTitle}>{t('speechRate')}</Text>
+                <Text style={styles.sliderValue}>{speechRate.toFixed(1)}x</Text>
               </View>
+
               <Slider
                 style={styles.slider}
                 minimumValue={0.5}
                 maximumValue={2.0}
                 step={0.1}
-                value={settings?.speech_rate || 1.0}
+                value={speechRate}
+                onValueChange={setSpeechRate} 
                 onSlidingComplete={(value) => updateSetting('speech_rate', value)}
                 minimumTrackTintColor={Colors.primary}
                 maximumTrackTintColor={Colors.gray300}
                 thumbTintColor={Colors.primary}
               />
             </View>
+
             <View style={styles.sliderItem}>
               <View style={styles.sliderHeader}>
                 <View style={[styles.settingIcon, { backgroundColor: '#DDA0DD' }]}>
                   <Ionicons name="musical-notes" size={20} color={Colors.white} />
                 </View>
-                <Text style={styles.settingTitle}>Daýys biiktigi</Text>
-                <Text style={styles.sliderValue}>{(settings?.speech_pitch || 1.0).toFixed(1)}</Text>
+                <Text style={styles.settingTitle}>{t('speechPitch')}</Text>
+                <Text style={styles.sliderValue}>{speechPitch.toFixed(1)}</Text>
               </View>
+              
               <Slider
                 style={styles.slider}
                 minimumValue={0.5}
                 maximumValue={2.0}
                 step={0.1}
-                value={settings?.speech_pitch || 1.0}
+                value={speechPitch}
+                onValueChange={setSpeechPitch}
                 onSlidingComplete={(value) => updateSetting('speech_pitch', value)}
                 minimumTrackTintColor={Colors.primary}
                 maximumTrackTintColor={Colors.gray300}
                 thumbTintColor={Colors.primary}
               />
             </View>
+
             <SettingItem
               icon="volume-high"
-              title="Avtomatty soıleu"
+              title={t('autoSpeak')}
               iconColor={Colors.accent}
               rightElement={
                 <Switch
@@ -323,91 +340,38 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Notifications */}
+        {/* About Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Habarlandyrular</Text>
+          <Text style={styles.sectionTitle}>{t('about')}</Text>
           <View style={styles.sectionContent}>
-            <SettingItem
-              icon="notifications"
-              title="Habarlandyrular"
-              iconColor={Colors.accent}
-              rightElement={
-                <Switch
-                  value={settings?.notifications_enabled ?? true}
-                  onValueChange={(value) => updateSetting('notifications_enabled', value)}
-                  trackColor={{ false: Colors.gray300, true: Colors.primaryLight }}
-                  thumbColor={settings?.notifications_enabled ? Colors.primary : Colors.white}
-                />
-              }
-            />
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>{t('appName')}</Text>
+              <Text style={styles.infoValue}>Sign Language App</Text>
+            </View>
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>{t('appVersion')}</Text>
+              <Text style={styles.infoValue}>1.0.0</Text>
+            </View>
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>{t('deviceId')}</Text>
+              <Text style={styles.infoValue} numberOfLines={1} ellipsizeMode="middle">
+                {deviceId || 'N/A'}
+              </Text>
+            </View>
           </View>
+         
         </View>
 
-        {/* Data & Storage */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Derekter</Text>
-          <View style={styles.sectionContent}>
-            <SettingItem
-              icon="refresh"
-              title="Baptaulardy qalpyna keltiru"
-              subtitle="Barlyq baptaulardy bastapqy kúıge qaıtaru"
-              onPress={handleResetSettings}
-              iconColor={Colors.error}
-            />
-          </View>
+        {/* Admin Button */}
+        <View style={styles.adminButtonContainer}>
+          <TouchableOpacity
+            style={styles.adminButton}
+            onPress={() => router.push('/admin')}
+          >
+            <Ionicons name="shield-outline" size={20} color={Colors.white} />
+            <Text style={styles.adminButtonText}>{t('adminPanel')}</Text>
+          </TouchableOpacity>
         </View>
-
-        {/* About */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Aqparat</Text>
-          <View style={styles.sectionContent}>
-            <SettingItem
-              icon="help-circle"
-              title="Komek"
-              onPress={handleSupport}
-              iconColor="#45B7D1"
-            />
-            <SettingItem
-              icon="shield-checkmark"
-              title="Qupıalylyq saıasaty"
-              onPress={handlePrivacy}
-              iconColor="#96CEB4"
-            />
-            <SettingItem
-              icon="information-circle"
-              title="Qosymsha turaly"
-              subtitle="Nusqa 1.0.0"
-              onPress={handleAbout}
-              iconColor={Colors.primary}
-            />
-          </View>
-        </View>
-
-        {/* App Info */}
-        <View style={styles.appInfo}>
-          <Text style={styles.appName}>Sign Language App</Text>
-          <Text style={styles.appVersion}>Nusqa 1.0.0</Text>
-          <Text style={styles.deviceId}>Device: {deviceId.substring(0, 20)}...</Text>
-          <Text style={styles.appCopyright}>© 2024 Sign Language App</Text>
-        </View>
-
-                {/* Admin Button */}
-<View style={{ paddingHorizontal: 16, marginBottom: 40 }}>
-  <TouchableOpacity
-    style={{
-      backgroundColor: Colors.primary,
-      paddingVertical: 14,
-      borderRadius: 12,
-      justifyContent: 'center',
-      alignItems: 'center',
-    }}
-    onPress={() => router.push('/admin')} // admin экранына бағыттау
-  >
-    <Text style={{ color: Colors.white, fontWeight: '700', fontSize: Typography.fontSizes.md }}>
-      Admin панелге кіру
-    </Text>
-  </TouchableOpacity>
-</View>
 
         <View style={styles.bottomPadding} />
       </ScrollView>
@@ -436,6 +400,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.md,
     backgroundColor: Colors.primary,
+    position: 'relative',
   },
   headerTitle: {
     fontSize: Typography.fontSizes.xxl,
@@ -522,31 +487,54 @@ const styles = StyleSheet.create({
     height: 40,
     marginLeft: Spacing.md + 36,
   },
+  infoItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.gray100,
+  },
+  infoLabel: {
+    fontSize: Typography.fontSizes.sm,
+    color: Colors.textSecondary,
+  },
+  infoValue: {
+    fontSize: Typography.fontSizes.sm,
+    fontWeight: Typography.fontWeights.medium,
+    color: Colors.textPrimary,
+    maxWidth: '60%',
+  },
   appInfo: {
     alignItems: 'center',
     paddingVertical: Spacing.xl,
   },
-  appName: {
-    fontSize: Typography.fontSizes.lg,
-    fontWeight: Typography.fontWeights.semibold,
-    color: Colors.textPrimary,
-  },
-  appVersion: {
-    fontSize: Typography.fontSizes.sm,
-    color: Colors.textSecondary,
-    marginTop: Spacing.xs,
-  },
-  deviceId: {
-    fontSize: Typography.fontSizes.xs,
-    color: Colors.gray400,
-    marginTop: Spacing.xs,
-  },
   appCopyright: {
     fontSize: Typography.fontSizes.xs,
     color: Colors.gray400,
-    marginTop: Spacing.sm,
+    marginTop: Spacing.xs,
+  },
+  adminButtonContainer: {
+    paddingHorizontal: Spacing.md,
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.xl,
+  },
+  adminButton: {
+    backgroundColor: Colors.primary,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    ...Shadows.md,
+  },
+  adminButtonText: {
+    color: Colors.white,
+    fontWeight: Typography.fontWeights.bold,
+    fontSize: Typography.fontSizes.md,
   },
   bottomPadding: {
-    height: 120,
+    height: 40,
   },
 });

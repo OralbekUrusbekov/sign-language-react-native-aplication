@@ -1,10 +1,10 @@
 // API Configuration
 // FastAPI Backend URL
 // Мысалы: 'http://192.168.1.100:8000' немесе 'http://localhost:8000'
-export const API_BASE_URL = 'http://10.134.254.250:7000';
+export const API_BASE_URL = 'http://192.168.0.13:8000';
 
 // Sign Language AI Model URL (Flask - бар backend)
-export const AI_MODEL_URL = 'http://192.168.0.13:8000'
+export const AI_MODEL_URL = 'http://192.138.0.13:8000'
 // API Endpoints - FastAPI Backend
 export const API_ENDPOINTS = {
   // Health Check

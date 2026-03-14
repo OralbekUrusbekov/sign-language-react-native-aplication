@@ -9,6 +9,7 @@ import {
   FlatList,
   Platform,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import * as Speech from 'expo-speech';
 import { Audio } from 'expo-av';
@@ -17,29 +18,11 @@ import { Colors, Typography, Spacing, BorderRadius, Shadows } from '@/constants/
 import { WordItem, Category } from '@/types';
 import { getWords, getCategories, textToSpeech, addFavorite, removeFavorite, getFavorites } from '@/services/api';
 import { DEVICE_ID } from '@/config/api';
-
-// Тіл опциялары
-const LANGUAGE_OPTIONS = [
-  { id: 'kz', label: 'Қазақша', flag: '🇰🇿' },
-  { id: 'ru', label: 'Русский', flag: '🇷🇺' },
-  { id: 'en', label: 'English', flag: '🇬🇧' },
-];
-
-// Сөйлеу жылдамдығы опциялары
-const SPEED_OPTIONS = [
-  { value: 0.7, label: 'Баяу', icon: 'speedometer-outline' },
-  { value: 0.9, label: 'Орташа', icon: 'speedometer-outline' },
-  { value: 1.1, label: 'Жылдам', icon: 'speedometer-outline' },
-];
-
-// Дауыс биіктігі опциялары
-const PITCH_OPTIONS = [
-  { value: 0.8, label: 'Төмен', icon: 'contrast-outline' },
-  { value: 1.0, label: 'Орташа', icon: 'contrast-outline' },
-  { value: 1.2, label: 'Жоғары', icon: 'contrast-outline' },
-];
+import { useSettings } from '@/context/SettingsContext';
+import { useTTSTranslation } from '@/i18n/text-to-speech';
 
 export default function TextToSpeechScreen() {
+  const { t } = useTTSTranslation();
   const [categories, setCategories] = useState<Category[]>([]);
   const [words, setWords] = useState<WordItem[]>([]);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
@@ -51,10 +34,17 @@ export default function TextToSpeechScreen() {
   const [sentence, setSentence] = useState<string[]>([]);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   
-  // TTS параметрлері
-  const [selectedLanguage, setSelectedLanguage] = useState('kz');
-  const [speechRate, setSpeechRate] = useState(0.9);
-  const [speechPitch, setSpeechPitch] = useState(1.0);
+  const {
+    appLanguage,
+    speechLanguage,
+    speechRate,
+    speechPitch,
+
+    setAppLanguage,
+    setSpeechLanguage,
+    setSpeechRate,
+    setSpeechPitch
+  } = useSettings();
 
   useEffect(() => {
     loadData();
@@ -66,6 +56,15 @@ export default function TextToSpeechScreen() {
     };
   }, []);
 
+  // Категория атауын аудару
+  const getCategoryName = (category: Category) => {
+    const categoryKey = category.id.replace(/-/g, '_');
+    const translated = t(`categories_default.${categoryKey}`);
+    
+    // Егер аударма табылмаса, оригинал атауды қайтару
+    return translated !== `categories_default.${categoryKey}` ? translated : category.name;
+  };
+
   const loadData = async () => {
     setIsLoading(true);
     try {
@@ -76,10 +75,18 @@ export default function TextToSpeechScreen() {
       ]);
       
       setWords(wordsData);
-      setCategories(categoriesData);
+      
+      // Категорияларды аударылған атаулармен орнату
+      const translatedCategories = categoriesData.map(cat => ({
+        ...cat,
+        name: getCategoryName(cat),
+      }));
+      
+      setCategories(translatedCategories);
       setFavorites(new Set(favoritesData.map(f => f.id)));
     } catch (error) {
       console.log('Error loading data:', error);
+      Alert.alert(t('error'), t('speechError'));
     } finally {
       setIsLoading(false);
     }
@@ -104,7 +111,7 @@ export default function TextToSpeechScreen() {
 
       // Backend TTS API-ға жіберу
       try {
-        const audioUrl = await textToSpeech(word, selectedLanguage, speechRate, speechPitch);
+        const audioUrl = await textToSpeech(word, speechLanguage, speechRate, speechPitch);
         const { sound: newSound } = await Audio.Sound.createAsync(
           { uri: audioUrl },
           { shouldPlay: true }
@@ -122,6 +129,7 @@ export default function TextToSpeechScreen() {
       }
     } catch (error) {
       console.log('Speech error:', error);
+      Alert.alert(t('error'), t('speechError'));
       setIsSpeaking(false);
     }
   };
@@ -134,7 +142,7 @@ export default function TextToSpeechScreen() {
     };
     
     await Speech.speak(word, {
-      language: languageMap[selectedLanguage as keyof typeof languageMap] || 'kk-KZ',
+      language: languageMap[speechLanguage as keyof typeof languageMap] || 'kk-KZ',
       pitch: speechPitch,
       rate: speechRate,
       onDone: () => setIsSpeaking(false),
@@ -205,51 +213,52 @@ export default function TextToSpeechScreen() {
   );
 
   const renderWordItem = ({ item }: { item: WordItem }) => {
-  const displayWord =
-    selectedLanguage === 'ru'
-      ? item.textRu || item.word
-      : selectedLanguage === 'en'
-      ? item.textEn || item.word
-      : item.word;
+    const displayWord =
+      speechLanguage === 'ru'
+        ? item.textRu || item.word
+        : speechLanguage === 'en'
+        ? item.textEn || item.word
+        : item.word;
 
-  return (
-    <TouchableOpacity
-      style={styles.wordCard}
-      onPress={() => speakWord(displayWord)}
-      onLongPress={() => addToSentence(displayWord)}
-    >
-      <View style={styles.wordContent}>
-        <Text style={styles.wordText}>{displayWord}</Text>
+    return (
+      <TouchableOpacity
+        style={styles.wordCard}
+        onPress={() => speakWord(displayWord)}
+        onLongPress={() => addToSentence(displayWord)}
+        delayLongPress={500}
+      >
+        <View style={styles.wordContent}>
+          <Text style={styles.wordText}>{displayWord}</Text>
 
-        {selectedLanguage === 'kz' && item.textRu && (
-          <Text style={styles.wordTranslation}>{item.textRu}</Text>
-        )}
+          {speechLanguage === 'kz' && item.textRu && (
+            <Text style={styles.wordTranslation}>{item.textRu}</Text>
+          )}
 
-        {selectedLanguage === 'ru' && item.textEn && (
-          <Text style={styles.wordTranslation}>{item.textEn}</Text>
-        )}
-      </View>
+          {speechLanguage === 'ru' && item.textEn && (
+            <Text style={styles.wordTranslation}>{item.textEn}</Text>
+          )}
+        </View>
 
-      <View style={styles.wordActions}>
-        <TouchableOpacity onPress={() => toggleFavorite(item)}>
-          <Ionicons
-            name={favorites.has(item.id) ? "heart" : "heart-outline"}
-            size={20}
-            color={favorites.has(item.id) ? Colors.error : Colors.gray400}
-          />
-        </TouchableOpacity>
+        <View style={styles.wordActions}>
+          <TouchableOpacity onPress={() => toggleFavorite(item)}>
+            <Ionicons
+              name={favorites.has(item.id) ? "heart" : "heart-outline"}
+              size={20}
+              color={favorites.has(item.id) ? Colors.error : Colors.gray400}
+            />
+          </TouchableOpacity>
 
-        <Ionicons name="volume-high" size={20} color={Colors.primary} />
-      </View>
-    </TouchableOpacity>
-  );
-};
+          <Ionicons name="volume-high" size={20} color={Colors.primary} />
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={Colors.primary} />
-        <Text style={styles.loadingText}>Derekterdi júktep jatyrmyz...</Text>
+        <Text style={styles.loadingText}>{t('loading')}</Text>
       </View>
     );
   }
@@ -258,95 +267,15 @@ export default function TextToSpeechScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Soıleu</Text>
-        <Text style={styles.headerSubtitle}>Sozderdi basyp dybystańyz</Text>
+        <Text style={styles.headerTitle}>{t('title')}</Text>
+        <Text style={styles.headerSubtitle}>{t('subtitle')}</Text>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* TTS Settings - Тіл, жылдамдық және биіктік таңдау */}
-        <View style={styles.settingsContainer}>
-          {/* Тіл таңдау */}
-          <View style={styles.settingSection}>
-            <Text style={styles.settingLabel}>Til:</Text>
-            <View style={styles.languageButtons}>
-              {LANGUAGE_OPTIONS.map((lang) => (
-                <TouchableOpacity
-                  key={lang.id}
-                  style={[
-                    styles.languageButton,
-                    selectedLanguage === lang.id && styles.languageButtonActive
-                  ]}
-                  onPress={() => setSelectedLanguage(lang.id)}
-                >
-                  <Text style={styles.languageFlag}>{lang.flag}</Text>
-                  <Text style={[
-                    styles.languageText,
-                    selectedLanguage === lang.id && styles.languageTextActive
-                  ]}>{lang.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          {/* Сөйлеу жылдамдығы */}
-          <View style={styles.settingSection}>
-            <Text style={styles.settingLabel}>Jýldamdyq:</Text>
-            <View style={styles.speedButtons}>
-              {SPEED_OPTIONS.map((speed) => (
-                <TouchableOpacity
-                  key={speed.value}
-                  style={[
-                    styles.speedButton,
-                    speechRate === speed.value && styles.speedButtonActive
-                  ]}
-                  onPress={() => setSpeechRate(speed.value)}
-                >
-                  <Ionicons 
-                    name={speed.icon as any} 
-                    size={18} 
-                    color={speechRate === speed.value ? Colors.white : Colors.textPrimary} 
-                  />
-                  <Text style={[
-                    styles.speedText,
-                    speechRate === speed.value && styles.speedTextActive
-                  ]}>{speed.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          {/* Дауыс биіктігі */}
-          <View style={styles.settingSection}>
-            <Text style={styles.settingLabel}>Dauys biiktigi:</Text>
-            <View style={styles.pitchButtons}>
-              {PITCH_OPTIONS.map((pitch) => (
-                <TouchableOpacity
-                  key={pitch.value}
-                  style={[
-                    styles.pitchButton,
-                    speechPitch === pitch.value && styles.pitchButtonActive
-                  ]}
-                  onPress={() => setSpeechPitch(pitch.value)}
-                >
-                  <Ionicons 
-                    name={pitch.icon as any} 
-                    size={18} 
-                    color={speechPitch === pitch.value ? Colors.white : Colors.textPrimary} 
-                  />
-                  <Text style={[
-                    styles.pitchText,
-                    speechPitch === pitch.value && styles.pitchTextActive
-                  ]}>{pitch.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        </View>
-
         {/* Sentence Builder */}
         <View style={styles.sentenceContainer}>
           <View style={styles.sentenceHeader}>
-            <Text style={styles.sectionTitle}>Soılem quru</Text>
+            <Text style={styles.sectionTitle}>{t('sentenceBuilder')}</Text>
             {sentence.length > 0 && (
               <TouchableOpacity onPress={clearSentence}>
                 <Ionicons name="close-circle" size={24} color={Colors.gray400} />
@@ -364,7 +293,7 @@ export default function TextToSpeechScreen() {
               </View>
             ) : (
               <Text style={styles.sentencePlaceholder}>
-                Sozderdi uzaq basyp soılem quryńyz
+                {t('sentencePlaceholder')}
               </Text>
             )}
           </View>
@@ -374,18 +303,18 @@ export default function TextToSpeechScreen() {
               onPress={speakSentence}
             >
               <Ionicons name="volume-high" size={24} color={Colors.white} />
-              <Text style={styles.speakSentenceText}>Soılemdi aıtu</Text>
+              <Text style={styles.speakSentenceText}>{t('speakSentence')}</Text>
             </TouchableOpacity>
           )}
         </View>
 
         {/* Custom Text Input */}
         <View style={styles.customInputContainer}>
-          <Text style={styles.sectionTitle}>Oz sozińizdi jazyńyz</Text>
+          <Text style={styles.sectionTitle}>{t('yourText')}</Text>
           <View style={styles.customInputRow}>
             <TextInput
               style={styles.customInput}
-              placeholder="Mátin jazyńyz..."
+              placeholder={t('textPlaceholder')}
               placeholderTextColor={Colors.gray400}
               value={customText}
               onChangeText={setCustomText}
@@ -411,7 +340,7 @@ export default function TextToSpeechScreen() {
         {/* Recent Words */}
         {recentWords.length > 0 && (
           <View style={styles.recentContainer}>
-            <Text style={styles.sectionTitle}>Sońǵy qoldanylǵan</Text>
+            <Text style={styles.sectionTitle}>{t('recentWords')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={styles.recentWords}>
                 {recentWords.map((word, index) => (
@@ -430,7 +359,7 @@ export default function TextToSpeechScreen() {
 
         {/* Categories */}
         <View style={styles.categoriesContainer}>
-          <Text style={styles.sectionTitle}>Sanattar</Text>
+          <Text style={styles.sectionTitle}>{t('categories')}</Text>
           <FlatList
             data={categories}
             renderItem={renderCategoryItem}
@@ -445,7 +374,7 @@ export default function TextToSpeechScreen() {
         {selectedCategory && (
           <View style={styles.wordsContainer}>
             <Text style={styles.sectionTitle}>
-              {categories.find(c => c.id === selectedCategory)?.name} sozderi
+              {categories.find(c => c.id === selectedCategory)?.name} {t('words')}
             </Text>
             <FlatList
               data={filteredWords}
@@ -463,7 +392,7 @@ export default function TextToSpeechScreen() {
         {isSpeaking && (
           <View style={styles.speakingIndicator}>
             <ActivityIndicator size="small" color={Colors.secondary} />
-            <Text style={styles.speakingText}>Soılep jatyr...</Text>
+            <Text style={styles.speakingText}>{t('speaking')}</Text>
           </View>
         )}
 
@@ -473,6 +402,7 @@ export default function TextToSpeechScreen() {
   );
 }
 
+// Стильдер өзгеріссіз қалады
 const styles = StyleSheet.create({
   container: {
     flex: 1,

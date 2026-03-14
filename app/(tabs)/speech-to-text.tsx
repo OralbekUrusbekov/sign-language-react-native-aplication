@@ -19,11 +19,11 @@ import { SpeechResult } from '@/types';
 import { speechToText, saveSpeechHistory, getSpeechHistory } from '@/services/api';
 import { API_BASE_URL, API_ENDPOINTS, DEVICE_ID, setDeviceId } from '@/config/api';
 import * as Application from 'expo-application';
-
-
-
+import { useSettings } from '@/context/SettingsContext';
+import { useSpeechTranslation } from '@/i18n/speech-to-text';
 
 export default function SpeechToTextScreen() {
+  const { t } = useSpeechTranslation();
   const [isListening, setIsListening] = useState(false);
   const [currentText, setCurrentText] = useState('');
   const [history, setHistory] = useState<SpeechResult[]>([]);
@@ -32,12 +32,6 @@ export default function SpeechToTextScreen() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showDebug, setShowDebug] = useState(__DEV__);
-
-  const componentName = 'SpeechToTextScreen';
-
-
-
-
 
   useEffect(() => {
     initializeComponent();
@@ -56,12 +50,11 @@ export default function SpeechToTextScreen() {
       await initializeDeviceId();
       await loadHistory();
     } catch (error) {
+      console.log('Error initializing:', error);
     } finally {
       setIsLoading(false);
     }
   };
-
-
 
   const startPulseAnimation = () => {
     Animated.loop(
@@ -116,16 +109,16 @@ export default function SpeechToTextScreen() {
         isFinal: true,
       })));
     } catch (error) {
+      console.log('Error loading history:', error);
     }
   };
 
   const startListening = async () => {
-    
     try {
       const { status } = await Audio.requestPermissionsAsync();
       
       if (status !== 'granted') {
-        Alert.alert('Қате', 'Микрофонға рұқсат беріңіз');
+        Alert.alert(t('permissionRequired'), t('permissionMessage'));
         return;
       }
 
@@ -136,7 +129,6 @@ export default function SpeechToTextScreen() {
         shouldDuckAndroid: true,
         playThroughEarpieceAndroid: false,
       });
-      
 
       const { recording: newRecording } = await Audio.Recording.createAsync(
         Audio.RecordingOptionsPresets.HIGH_QUALITY
@@ -147,12 +139,12 @@ export default function SpeechToTextScreen() {
       setCurrentText('');
       
     } catch (error) {
-      Alert.alert('Қате', 'Жазбаны бастау мүмкін болмады');
+      console.log('Start listening error:', error);
+      Alert.alert(t('error'), t('startError'));
     }
   };
 
   const stopListening = async () => {
-    
     try {
       if (!recording) {
         return;
@@ -170,84 +162,75 @@ export default function SpeechToTextScreen() {
       if (uri) {
         await processRecording(uri);
       } else {
-        Alert.alert('Қате', 'Жазба файлы табылмады');
+        Alert.alert(t('error'), t('fileNotFound'));
       }
     } catch (error) {
-      Alert.alert('Қате', 'Жазбаны тоқтату кезінде қате пайда болды');
+      console.log('Stop listening error:', error);
+      Alert.alert(t('error'), t('stopError'));
     } finally {
       setIsProcessing(false);
     }
   };
 
+  const processRecording = async (uri: string) => {
+    try {
+      // Файлды тексеру
+      const fileInfo = await FileSystem.getInfoAsync(uri);
+      console.log('File info:', fileInfo);
 
-// app/(tabs)/speech-to-text.tsx - processRecording функциясы
-
-const processRecording = async (uri: string) => {
-  
-  try {
-    // Файлды тексеру
-    const fileInfo = await FileSystem.getInfoAsync(uri);
-  
-
-    if (!fileInfo.exists) {
-      throw new Error('Аудио файл табылмады');
-    }
-    
-    const text = await speechToText(uri, 'kz');
+      if (!fileInfo.exists) {
+        throw new Error(t('audioFileNotFound'));
+      }
+      
+      const text = await speechToText(uri, 'kz');
+          
+      if (text && text.trim()) {
+        setCurrentText(text);
         
-    if (text && text.trim()) {
-      setCurrentText(text);
-      
-      // Тарихқа сақтау
-      const newResult: SpeechResult = {
-        text,
-        confidence: 0.9,
-        timestamp: new Date(),
-        isFinal: true,
-      };
-      
-      setHistory(prev => [newResult, ...prev].slice(0, 20));
-      
-      // Backend-ке сақтау
-      if (DEVICE_ID) {
-        try {
-          await saveSpeechHistory(DEVICE_ID, text, 'kz', 0.9);
-        } catch (saveError) {
+        // Тарихқа сақтау
+        const newResult: SpeechResult = {
+          text,
+          confidence: 0.9,
+          timestamp: new Date(),
+          isFinal: true,
+        };
+        
+        setHistory(prev => [newResult, ...prev].slice(0, 20));
+        
+        // Backend-ке сақтау
+        if (DEVICE_ID) {
+          try {
+            await saveSpeechHistory(DEVICE_ID, text, 'kz', 0.9);
+          } catch (saveError) {
+            console.log('Error saving to backend:', saveError);
+          }
         }
       }
+    } catch (error: any) {
+      console.log('Process recording error:', error);
+      
+      Alert.alert(
+        t('error'),
+        `${t('error')}: ${error.message || t('audioFileNotFound')}`,
+        [
+          { text: t('demoMode'), onPress: simulateSpeechRecognition },
+          { text: 'OK' }
+        ]
+      );
     }
-  } catch (error: any) {
-    
-    // Қате туралы толық ақпарат
-    Alert.alert(
-      'Қате',
-      `Қате түрі: ${error.name || 'Unknown'}\n` +
-      `Хабарлама: ${error.message || 'Жоқ'}\n\n` +
-      `API URL: ${API_ENDPOINTS.SPEECH_TO_TEXT}`,
-      [
-        { text: 'Демо режим', onPress: simulateSpeechRecognition },
-        { text: 'OK' }
-      ]
-    );
-  }
-};
+  };
 
   const simulateSpeechRecognition = useCallback(() => {
-    
     const demoTexts = [
-      'Сәлеметсіз бе',
-      'Мен сізді түсінемін',
-      'Рахмет көмегіңіз үшін',
-      'Қандай жаңалықтар бар?',
-      'Бүгін ауа райы қандай?',
-      'Кездескенше',
-      'Жақсы күн тілеймін',
-      'Маған көмектесіңізші',
+      t('tip1'),
+      t('tip2'),
+      t('tip3'),
+      t('speakNow'),
+      t('startSpeaking'),
     ];
 
     const randomIndex = Math.floor(Math.random() * demoTexts.length);
     const simulatedText = demoTexts[randomIndex];
-    
 
     let currentIndex = 0;
     const interval = setInterval(() => {
@@ -270,20 +253,18 @@ const processRecording = async (uri: string) => {
         isFinal: true,
       };
       
-      
       setHistory(prev => [newHistoryItem, ...prev].slice(0, 20));
     }, 2000);
-  }, []);
+  }, [t]);
 
   const clearHistory = async () => {
-    
     Alert.alert(
-      'Тарихты тазалау',
-      'Барлық жазбаларды өшіруге сенімдісіз бе?',
+      t('clearHistory'),
+      t('clearConfirm'),
       [
-        { text: 'Болдырмау', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Иә, өшіру',
+          text: t('delete'),
           style: 'destructive',
           onPress: async () => {
             setHistory([]);
@@ -295,23 +276,21 @@ const processRecording = async (uri: string) => {
   };
 
   const copyText = (text: string) => {
-    Alert.alert('Көшірілді', text);
+    Alert.alert(t('copied'), text);
   };
 
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('kk-KZ', {
+    return date.toLocaleTimeString(t('timeFormat'), {
       hour: '2-digit',
       minute: '2-digit',
     });
   };
 
-
-
   if (isLoading) {
     return (
       <View style={[styles.container, styles.centerContent]}>
         <ActivityIndicator size="large" color={Colors.primary} />
-        <Text style={styles.loadingText}>Жүктелуде...</Text>
+        <Text style={styles.loadingText}>{t('loading')}</Text>
       </View>
     );
   }
@@ -321,22 +300,21 @@ const processRecording = async (uri: string) => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerRow}>
-          <Text style={styles.headerTitle}>Тыңдау</Text>
-  
+          <Text style={styles.headerTitle}>{t('title')}</Text>
         </View>
-        <Text style={styles.headerSubtitle}>Дауысты текстке айналдыру</Text>
+        <Text style={styles.headerSubtitle}>{t('subtitle')}</Text>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Current Recognition */}
         <View style={styles.currentContainer}>
           <View style={styles.currentHeader}>
-            <Text style={styles.sectionTitle}>Қазіргі мәтін</Text>
+            <Text style={styles.sectionTitle}>{t('currentText')}</Text>
             {(isListening || isProcessing) && (
               <View style={styles.listeningBadge}>
                 <View style={[styles.listeningDot, isProcessing && styles.processingDot]} />
                 <Text style={styles.listeningText}>
-                  {isProcessing ? 'Өңдеуде...' : 'Тыңдап жатыр'}
+                  {isProcessing ? t('processing') : t('listening')}
                 </Text>
               </View>
             )}
@@ -348,8 +326,8 @@ const processRecording = async (uri: string) => {
             ) : (
               <Text style={styles.placeholderText}>
                 {isListening
-                  ? 'Сөйлеңіз...'
-                  : 'Микрофонды басып сөйлей бастаңыз'}
+                  ? t('speakNow')
+                  : t('startSpeaking')}
               </Text>
             )}
           </View>
@@ -360,7 +338,7 @@ const processRecording = async (uri: string) => {
               onPress={() => copyText(currentText)}
             >
               <Ionicons name="copy-outline" size={20} color={Colors.primary} />
-              <Text style={styles.copyButtonText}>Көшіру</Text>
+              <Text style={styles.copyButtonText}>{t('copy')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -396,25 +374,25 @@ const processRecording = async (uri: string) => {
           </Animated.View>
           <Text style={styles.microphoneHint}>
             {isProcessing 
-              ? 'Өңделіп жатыр...' 
-              : (isListening ? 'Тоқтату үшін басыңыз' : 'Бастау үшін басыңыз')}
+              ? t('processingAudio')
+              : (isListening ? t('stopToStop') : t('startToStart'))}
           </Text>
         </View>
 
         {/* Tips */}
         <View style={styles.tipsContainer}>
-          <Text style={styles.tipsTitle}>Кеңестер</Text>
+          <Text style={styles.tipsTitle}>{t('tips')}</Text>
           <View style={styles.tipItem}>
             <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
-            <Text style={styles.tipText}>Анық және баяу сөйлеңіз</Text>
+            <Text style={styles.tipText}>{t('tip1')}</Text>
           </View>
           <View style={styles.tipItem}>
             <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
-            <Text style={styles.tipText}>Тыныш жерде қолданыңыз</Text>
+            <Text style={styles.tipText}>{t('tip2')}</Text>
           </View>
           <View style={styles.tipItem}>
             <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
-            <Text style={styles.tipText}>Микрофонға жақын сөйлеңіз</Text>
+            <Text style={styles.tipText}>{t('tip3')}</Text>
           </View>
         </View>
 
@@ -422,7 +400,7 @@ const processRecording = async (uri: string) => {
         {history.length > 0 && (
           <View style={styles.historyContainer}>
             <View style={styles.historyHeader}>
-              <Text style={styles.sectionTitle}>Тарих</Text>
+              <Text style={styles.sectionTitle}>{t('history')}</Text>
               <TouchableOpacity onPress={clearHistory}>
                 <Ionicons name="trash-outline" size={22} color={Colors.gray500} />
               </TouchableOpacity>
