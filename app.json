@@ -39,10 +39,11 @@
     "plugins": [
       "expo-router",
       [
-        "expo-camera",
-        {
-          "cameraPermission": "Sign language тану үшін камера қажет"
-        }
+      "react-native-vision-camera",
+      {
+      "cameraPermissionText": "Sign language тану үшін камера қажет",
+      "enableMicrophonePermission": false
+      }
       ],
       "expo-web-browser"
     ],

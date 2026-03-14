@@ -179,59 +179,72 @@ const handConnections = [
   };
 
 const captureAndSendFrame = useCallback(async () => {
-  if (!cameraRef.current) return;
-  if (!isRunningRef.current) return;
-  if (isProcessingRef.current) return;
+if (!cameraRef.current) return;
+if (!isRunningRef.current) return;
+if (isProcessingRef.current) return;
 
-  isProcessingRef.current = true;
-  setIsProcessing(true);
+isProcessingRef.current = true;
+setIsProcessing(true);
 
-  try {
-    const photo = await cameraRef.current.takePictureAsync({
-      quality: 0.08,
-      base64: false,
-      skipProcessing: true,
-      shutterSound: false,
-    });
+try {
+const photo = await cameraRef.current.takePictureAsync({
+quality: 0.03,
+base64: false,
+skipProcessing: true,
+shutterSound: false,
+});
 
-    if (!isRunningRef.current) return;
 
-    const data = await predictFrame(photo.uri);
+if (!photo?.uri) {
+  return;
+}
 
-    if (!isRunningRef.current) return;
+const data = await predictFrame(photo.uri);
 
-    if (data.status === 'success' && data.current_prediction) {
-      setCurrentPrediction(data.current_prediction);
-      setTop3Predictions(data.top3 || []);
-      setLandmarks(data.landmarks);
+if (!isRunningRef.current) return;
 
-    } else if (data.status === 'waiting') {
-      setCurrentPrediction(data.message || 'Кадрлар жиналуда...');
-      setLandmarks(data.landmarks);
-    }
+if (data.status === 'success' && data.current_prediction) {
+  setCurrentPrediction(data.current_prediction);
+  setTop3Predictions(data.top3 || []);
+  setLandmarks(data.landmarks ?? null);
 
-  } catch (e) {
-    console.log(e);
-  } finally {
-    isProcessingRef.current = false;
-    setIsProcessing(false);
-  }
+} else if (data.status === 'waiting') {
+  setCurrentPrediction(data.message || 'Кадрлар жиналуда...');
+  setLandmarks(data.landmarks ?? null);
+}
+
+
+} catch (e) {
+console.log('FRAME ERROR:', e);
+} finally {
+isProcessingRef.current = false;
+setIsProcessing(false);
+}
 }, []);
+
 
 const startFrameCapture = useCallback(() => {
   if (frameIntervalRef.current) {
     clearTimeout(frameIntervalRef.current);
   }
 
-  const loop = async () => {
+  const runLoop = async () => {
     if (!isRunningRef.current) return;
 
-    await captureAndSendFrame();
+    try {
+      await captureAndSendFrame();
+    } catch (err) {
+      console.log("FRAME LOOP ERROR:", err);
+    }
 
-    frameIntervalRef.current = setTimeout(loop, 100);
+    if (isRunningRef.current) {
+      frameIntervalRef.current = setTimeout(() => {
+        runLoop();
+      }, 80);
+    }
   };
 
-  loop();
+  runLoop();
 }, [captureAndSendFrame]);
 
   const stopFrameCapture = useCallback(() => {
@@ -378,11 +391,12 @@ const startFrameCapture = useCallback(() => {
           <View style={styles.cameraContainer}>
  
   <CameraView
-    ref={cameraRef}
-    style={styles.camera}
-    facing={facing}
-    ratio="4:3"
-  />
+ref={cameraRef}
+style={styles.camera}
+facing={facing}
+ratio="4:3"
+pictureSize="640x480"
+/>
 
   <View style={StyleSheet.absoluteFill} pointerEvents="none">
   <Svg width={overlayWidth} height={CAMERA_HEIGHT}>
