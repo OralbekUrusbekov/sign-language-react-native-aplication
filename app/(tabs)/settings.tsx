@@ -398,9 +398,11 @@ const styles = StyleSheet.create({
   header: {
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
     paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.md,
+    paddingBottom: Spacing.lg,
     backgroundColor: Colors.primary,
     position: 'relative',
+    borderBottomLeftRadius: BorderRadius.xxl,
+    borderBottomRightRadius: BorderRadius.xxl,
   },
   headerTitle: {
     fontSize: Typography.fontSizes.xxl,
@@ -409,7 +411,7 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: Typography.fontSizes.sm,
-    color: Colors.gray300,
+    color: Colors.secondary,
     marginTop: Spacing.xs,
   },
   savingIndicator: {
@@ -433,10 +435,12 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   sectionContent: {
-    backgroundColor: Colors.white,
-    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: BorderRadius.xl,
     overflow: 'hidden',
     ...Shadows.sm,
+    borderWidth: 1,
+    borderColor: Colors.gray200,
   },
   settingItem: {
     flexDirection: 'row',
@@ -520,17 +524,17 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xl,
   },
   adminButton: {
-    backgroundColor: Colors.primary,
-    paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.secondary,
+    paddingVertical: Spacing.lg,
+    borderRadius: BorderRadius.xl,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: Spacing.sm,
-    ...Shadows.md,
+    ...Shadows.lg,
   },
   adminButtonText: {
-    color: Colors.white,
+    color: Colors.primary,
     fontWeight: Typography.fontWeights.bold,
     fontSize: Typography.fontSizes.md,
   },

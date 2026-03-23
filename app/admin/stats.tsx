@@ -15,22 +15,22 @@ import { API_BASE_URL } from '@/config/api';
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
 
-// Admin Theme Colors
+// TYNDAU Admin Theme Colors
 const AdminColors = {
-  background: '#0a0a0a',
-  surface: '#141414',
-  surfaceHover: '#1a1a1a',
-  border: '#262626',
+  background: '#0D1F33',
+  surface: '#1E3A5F',
+  surfaceHover: '#2E5A8F',
+  border: '#2E5A8F',
   primary: '#4ECDC4',
-  primaryDark: '#3EBDB4',
-  secondary: '#1E3A5F',
+  primaryDark: '#2EAD9F',
+  secondary: '#6EE7DE',
   text: '#ffffff',
-  textSecondary: '#a1a1aa',
-  textMuted: '#71717a',
-  success: '#22c55e',
-  warning: '#f59e0b',
-  error: '#ef4444',
-  info: '#3b82f6',
+  textSecondary: '#CBD5E1',
+  textMuted: '#94A3B8',
+  success: '#10B981',
+  warning: '#F59E0B',
+  error: '#EF4444',
+  info: '#3B82F6',
 };
 
 interface StatItem {

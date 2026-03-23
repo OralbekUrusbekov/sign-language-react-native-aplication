@@ -422,8 +422,10 @@ const styles = StyleSheet.create({
   header: {
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
     paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.md,
-    backgroundColor: Colors.secondary,
+    paddingBottom: Spacing.lg,
+    backgroundColor: Colors.primary,
+    borderBottomLeftRadius: BorderRadius.xxl,
+    borderBottomRightRadius: BorderRadius.xxl,
   },
   headerTitle: {
     fontSize: Typography.fontSizes.xxl,
@@ -541,11 +543,13 @@ const styles = StyleSheet.create({
   },
   sentenceContainer: {
     margin: Spacing.md,
-    marginTop: 0,
-    backgroundColor: Colors.white,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    ...Shadows.sm,
+    marginTop: Spacing.md,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.lg,
+    ...Shadows.md,
+    borderWidth: 1,
+    borderColor: Colors.gray200,
   },
   sentenceHeader: {
     flexDirection: 'row',

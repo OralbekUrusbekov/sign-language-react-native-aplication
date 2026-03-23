@@ -452,8 +452,10 @@ const styles = StyleSheet.create({
   header: {
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
     paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.md,
-    backgroundColor: Colors.accent,
+    paddingBottom: Spacing.lg,
+    backgroundColor: Colors.primary,
+    borderBottomLeftRadius: BorderRadius.xxl,
+    borderBottomRightRadius: BorderRadius.xxl,
   },
   headerRow: {
     flexDirection: 'row',
@@ -484,10 +486,12 @@ const styles = StyleSheet.create({
   },
   currentContainer: {
     margin: Spacing.md,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.cardBackground,
     borderRadius: BorderRadius.xl,
     padding: Spacing.lg,
     ...Shadows.md,
+    borderWidth: 1,
+    borderColor: Colors.gray200,
   },
   currentHeader: {
     flexDirection: 'row',

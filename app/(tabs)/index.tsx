@@ -769,7 +769,7 @@ export default function SignLanguageScreen() {
   );
 }
 
-// ==================== СТИЛЬДЕР (өзгеріссіз қалады) ====================
+// ==================== СТИЛЬДЕР - TYNDAU DESIGN ====================
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -778,17 +778,20 @@ const styles = StyleSheet.create({
   header: {
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
     paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.md,
+    paddingBottom: Spacing.lg,
     backgroundColor: Colors.primary,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    borderBottomLeftRadius: BorderRadius.xxl,
+    borderBottomRightRadius: BorderRadius.xxl,
   },
   headerTitle: {
-    fontSize: Typography.fontSizes.lg,
+    fontSize: Typography.fontSizes.xl,
     fontWeight: Typography.fontWeights.bold,
     color: Colors.white,
     flex: 1,
+    letterSpacing: 0.5,
   },
   connectionStatus: {
     flexDirection: 'row',
@@ -870,11 +873,13 @@ const styles = StyleSheet.create({
     color: Colors.white,
   },
   cameraCard: {
-    backgroundColor: Colors.white,
-    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: BorderRadius.xl,
     overflow: 'hidden',
     marginBottom: Spacing.md,
-    ...Shadows.md,
+    ...Shadows.lg,
+    borderWidth: 1,
+    borderColor: Colors.gray200,
   },
   cameraCardHeader: {
     padding: Spacing.md,
@@ -990,10 +995,10 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   startButton: {
-    backgroundColor: Colors.success,
+    backgroundColor: Colors.secondary,
   },
   stopButton: {
-    backgroundColor: Colors.error,
+    backgroundColor: Colors.accent,
   },
   buttonDisabled: {
     opacity: 0.6,
@@ -1024,11 +1029,13 @@ const styles = StyleSheet.create({
     fontWeight: Typography.fontWeights.medium,
   },
   resultsCard: {
-    backgroundColor: Colors.white,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.lg,
     marginBottom: Spacing.md,
     ...Shadows.md,
+    borderWidth: 1,
+    borderColor: Colors.gray200,
   },
   resultsCardTitle: {
     fontSize: Typography.fontSizes.md,
@@ -1045,11 +1052,11 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   currentPredictionBox: {
-    backgroundColor: 'rgba(13, 110, 253, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(13, 110, 253, 0.2)',
-    borderRadius: BorderRadius.md,
-    padding: Spacing.lg,
+    backgroundColor: 'rgba(78, 205, 196, 0.08)',
+    borderWidth: 2,
+    borderColor: 'rgba(78, 205, 196, 0.2)',
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.xl,
     alignItems: 'center',
   },
   waitingBox: {
@@ -1123,11 +1130,13 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.sm,
   },
   historyCard: {
-    backgroundColor: Colors.white,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.lg,
     marginBottom: Spacing.md,
     ...Shadows.sm,
+    borderWidth: 1,
+    borderColor: Colors.gray200,
   },
   historyHeader: {
     flexDirection: 'row',
@@ -1155,11 +1164,13 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   instructionsCard: {
-    backgroundColor: Colors.white,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    marginBottom: Spacing.xl,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.lg,
+    marginBottom: 120,
     ...Shadows.sm,
+    borderWidth: 1,
+    borderColor: Colors.gray200,
   },
   instructionsTitle: {
     fontSize: Typography.fontSizes.md,
