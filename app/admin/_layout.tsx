@@ -1,3 +1,4 @@
+// app/admin/_layout.tsx
 import React, { useState, useEffect } from 'react';
 import { Slot, Tabs } from 'expo-router';
 import {
@@ -12,27 +13,40 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Link, usePathname } from 'expo-router';
+import {
+  scaleWidth,
+  scaleHeight,
+  scaleFont,
+  spacing,
+  borderRadius,
+  isMobile,
+  isTablet,
+  isDesktop,
+  getHeaderHeight,
+  getMobileTabBarHeight,
+  getSidebarWidth,
+  getAdminHeaderStyle,
+  getAdminSidebarStyle,
+  getAdminNavItemStyle,
+  responsiveFont,
+} from '@/constants/admin-responsive';
 
-const { width } = Dimensions.get('window');
-const isWeb = Platform.OS === 'web';
-const isMobile = width < 768;
-
-// Admin Theme Colors
+// TYNDAU Admin Theme Colors
 const AdminColors = {
-  background: '#0a0a0a',
-  surface: '#141414',
-  surfaceHover: '#1a1a1a',
-  border: '#262626',
+  background: '#0D1F33',
+  surface: '#1E3A5F',
+  surfaceHover: '#2E5A8F',
+  border: '#2E5A8F',
   primary: '#4ECDC4',
-  primaryDark: '#3EBDB4',
-  secondary: '#1E3A5F',
+  primaryDark: '#2EAD9F',
+  secondary: '#6EE7DE',
   text: '#ffffff',
-  textSecondary: '#a1a1aa',
-  textMuted: '#71717a',
-  success: '#22c55e',
-  warning: '#f59e0b',
-  error: '#ef4444',
-  info: '#3b82f6',
+  textSecondary: '#CBD5E1',
+  textMuted: '#94A3B8',
+  success: '#10B981',
+  warning: '#F59E0B',
+  error: '#EF4444',
+  info: '#3B82F6',
 };
 
 interface NavItem {
@@ -46,7 +60,6 @@ const navItems: NavItem[] = [
   { label: 'Dashboard', labelKz: 'Басты бет', icon: 'grid-outline', href: '/admin' },
   { label: 'Words', labelKz: 'Сөздер', icon: 'text-outline', href: '/admin/words' },
   { label: 'Books', labelKz: 'Кітаптар', icon: 'book-outline', href: '/admin/books' },
-  { label: 'Statistics', labelKz: 'Статистика', icon: 'stats-chart-outline', href: '/admin/stats' },
   { label: 'Settings', labelKz: 'Баптаулар', icon: 'settings-outline', href: '/admin/settings' },
 ];
 
@@ -58,7 +71,7 @@ function Sidebar({ isCollapsed, onToggle }: { isCollapsed: boolean; onToggle: ()
       {/* Logo */}
       <View style={styles.logoContainer}>
         <View style={styles.logoIcon}>
-          <Ionicons name="hand-left" size={24} color={AdminColors.primary} />
+          <Ionicons name="hand-left" size={scaleWidth(24)} color={AdminColors.primary} />
         </View>
         {!isCollapsed && (
           <View>
@@ -66,11 +79,11 @@ function Sidebar({ isCollapsed, onToggle }: { isCollapsed: boolean; onToggle: ()
             <Text style={styles.logoSubtext}>Admin Panel</Text>
           </View>
         )}
-        {isWeb && !isMobile && (
+        {!isMobile && (
           <TouchableOpacity style={styles.collapseButton} onPress={onToggle}>
             <Ionicons
               name={isCollapsed ? 'chevron-forward' : 'chevron-back'}
-              size={18}
+              size={scaleWidth(18)}
               color={AdminColors.textSecondary}
             />
           </TouchableOpacity>
@@ -96,7 +109,7 @@ function Sidebar({ isCollapsed, onToggle }: { isCollapsed: boolean; onToggle: ()
                 <View style={[styles.navIconContainer, isActive && styles.navIconContainerActive]}>
                   <Ionicons
                     name={item.icon}
-                    size={20}
+                    size={scaleWidth(20)}
                     color={isActive ? AdminColors.primary : AdminColors.textSecondary}
                   />
                 </View>
@@ -119,7 +132,7 @@ function Sidebar({ isCollapsed, onToggle }: { isCollapsed: boolean; onToggle: ()
       <View style={styles.sidebarFooter}>
         <Link href="/" asChild>
           <TouchableOpacity style={[styles.backButton, isCollapsed && styles.backButtonCollapsed]}>
-            <Ionicons name="arrow-back" size={20} color={AdminColors.textSecondary} />
+            <Ionicons name="arrow-back" size={scaleWidth(20)} color={AdminColors.textSecondary} />
             {!isCollapsed && <Text style={styles.backText}>Қолданбаға оралу</Text>}
           </TouchableOpacity>
         </Link>
@@ -140,20 +153,19 @@ function Header() {
       </View>
       <View style={styles.headerRight}>
         <TouchableOpacity style={styles.headerButton}>
-          <Ionicons name="notifications-outline" size={20} color={AdminColors.textSecondary} />
+          <Ionicons name="notifications-outline" size={scaleWidth(20)} color={AdminColors.textSecondary} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.headerButton}>
-          <Ionicons name="help-circle-outline" size={20} color={AdminColors.textSecondary} />
+          <Ionicons name="help-circle-outline" size={scaleWidth(20)} color={AdminColors.textSecondary} />
         </TouchableOpacity>
         <View style={styles.userAvatar}>
-          <Ionicons name="person" size={18} color={AdminColors.background} />
+          <Ionicons name="person" size={scaleWidth(18)} color={AdminColors.background} />
         </View>
       </View>
     </View>
   );
 }
 
-// Mobile Tab Bar Component
 function MobileTabBar() {
   const pathname = usePathname();
 
@@ -169,7 +181,7 @@ function MobileTabBar() {
               <View style={[styles.mobileTabIcon, isActive && styles.mobileTabIconActive]}>
                 <Ionicons
                   name={item.icon}
-                  size={22}
+                  size={scaleWidth(22)}
                   color={isActive ? AdminColors.primary : AdminColors.textSecondary}
                 />
               </View>
@@ -185,7 +197,7 @@ function MobileTabBar() {
 }
 
 export default function AdminLayout() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(isMobile);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isMobileDevice, setIsMobileDevice] = useState(isMobile);
 
   useEffect(() => {
@@ -204,15 +216,15 @@ export default function AdminLayout() {
       <SafeAreaView style={styles.mobileContainer}>
         <View style={styles.mobileHeader}>
           <View style={styles.mobileLogo}>
-            <Ionicons name="hand-left" size={24} color={AdminColors.primary} />
+            <Ionicons name="hand-left" size={scaleWidth(24)} color={AdminColors.primary} />
             <Text style={styles.mobileLogoText}>Админ</Text>
           </View>
           <View style={styles.mobileHeaderRight}>
             <TouchableOpacity style={styles.mobileHeaderButton}>
-              <Ionicons name="notifications-outline" size={20} color={AdminColors.textSecondary} />
+              <Ionicons name="notifications-outline" size={scaleWidth(20)} color={AdminColors.textSecondary} />
             </TouchableOpacity>
             <View style={styles.mobileUserAvatar}>
-              <Ionicons name="person" size={16} color={AdminColors.background} />
+              <Ionicons name="person" size={scaleWidth(16)} color={AdminColors.background} />
             </View>
           </View>
         </View>
@@ -250,59 +262,59 @@ const styles = StyleSheet.create({
     backgroundColor: AdminColors.background,
   },
   sidebar: {
-    width: 260,
+    width: getSidebarWidth(false),
     backgroundColor: AdminColors.surface,
     borderRightWidth: 1,
     borderRightColor: AdminColors.border,
-    paddingVertical: 20,
+    paddingVertical: spacing.lg,
   },
   sidebarCollapsed: {
-    width: 72,
+    width: getSidebarWidth(true),
   },
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 32,
-    gap: 12,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.xxxl,
+    gap: spacing.sm,
   },
   logoIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+    width: scaleWidth(40),
+    height: scaleWidth(40),
+    borderRadius: borderRadius.md,
     backgroundColor: 'rgba(78, 205, 196, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   logoText: {
-    fontSize: 16,
+    fontSize: scaleFont(16),
     fontWeight: '700',
     color: AdminColors.text,
   },
   logoSubtext: {
-    fontSize: 11,
+    fontSize: scaleFont(11),
     color: AdminColors.textMuted,
-    marginTop: 2,
+    marginTop: scaleHeight(2),
   },
   collapseButton: {
     marginLeft: 'auto',
-    width: 28,
-    height: 28,
-    borderRadius: 6,
+    width: scaleWidth(28),
+    height: scaleWidth(28),
+    borderRadius: borderRadius.sm,
     backgroundColor: AdminColors.surfaceHover,
     justifyContent: 'center',
     alignItems: 'center',
   },
   navContainer: {
     flex: 1,
-    paddingHorizontal: 12,
+    paddingHorizontal: spacing.sm,
   },
   navSection: {
-    fontSize: 11,
+    fontSize: scaleFont(11),
     fontWeight: '600',
     color: AdminColors.textMuted,
-    marginBottom: 12,
-    marginLeft: 4,
+    marginBottom: spacing.sm,
+    marginLeft: spacing.xxs,
     letterSpacing: 1,
   },
   hidden: {
@@ -312,11 +324,11 @@ const styles = StyleSheet.create({
   navItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    marginBottom: 4,
-    gap: 12,
+    paddingVertical: scaleHeight(10),
+    paddingHorizontal: spacing.sm,
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.xxs,
+    gap: spacing.sm,
   },
   navItemActive: {
     backgroundColor: 'rgba(78, 205, 196, 0.1)',
@@ -326,9 +338,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
   },
   navIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
+    width: scaleWidth(36),
+    height: scaleWidth(36),
+    borderRadius: borderRadius.sm,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: AdminColors.surfaceHover,
@@ -340,7 +352,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   navText: {
-    fontSize: 14,
+    fontSize: scaleFont(14),
     fontWeight: '500',
     color: AdminColors.textSecondary,
   },
@@ -348,37 +360,37 @@ const styles = StyleSheet.create({
     color: AdminColors.text,
   },
   navSubtext: {
-    fontSize: 11,
+    fontSize: scaleFont(11),
     color: AdminColors.textMuted,
-    marginTop: 2,
+    marginTop: scaleHeight(2),
   },
   activeIndicator: {
-    width: 4,
-    height: 20,
+    width: scaleWidth(4),
+    height: scaleHeight(20),
     backgroundColor: AdminColors.primary,
-    borderRadius: 2,
+    borderRadius: borderRadius.xs,
   },
   sidebarFooter: {
-    paddingHorizontal: 12,
-    paddingTop: 16,
+    paddingHorizontal: spacing.sm,
+    paddingTop: spacing.md,
     borderTopWidth: 1,
     borderTopColor: AdminColors.border,
-    marginTop: 16,
+    marginTop: spacing.md,
   },
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    borderRadius: 10,
+    padding: spacing.sm,
+    borderRadius: borderRadius.md,
     backgroundColor: AdminColors.surfaceHover,
-    gap: 10,
+    gap: spacing.xs,
   },
   backButtonCollapsed: {
     justifyContent: 'center',
     paddingHorizontal: 0,
   },
   backText: {
-    fontSize: 13,
+    fontSize: scaleFont(13),
     color: AdminColors.textSecondary,
   },
   mainContent: {
@@ -386,11 +398,11 @@ const styles = StyleSheet.create({
     backgroundColor: AdminColors.background,
   },
   header: {
-    height: 64,
+    height: getHeaderHeight(),
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
+    paddingHorizontal: spacing.xl,
     borderBottomWidth: 1,
     borderBottomColor: AdminColors.border,
     backgroundColor: AdminColors.surface,
@@ -398,54 +410,54 @@ const styles = StyleSheet.create({
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: spacing.md,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: scaleFont(18),
     fontWeight: '600',
     color: AdminColors.text,
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: scaleHeight(4),
     backgroundColor: 'rgba(34, 197, 94, 0.1)',
-    borderRadius: 12,
-    gap: 6,
+    borderRadius: borderRadius.lg,
+    gap: spacing.xxs,
   },
   statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: scaleWidth(6),
+    height: scaleWidth(6),
+    borderRadius: scaleWidth(3),
     backgroundColor: AdminColors.success,
   },
   statusText: {
-    fontSize: 12,
+    fontSize: scaleFont(12),
     color: AdminColors.success,
     fontWeight: '500',
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.xs,
   },
   headerButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
+    width: scaleWidth(36),
+    height: scaleWidth(36),
+    borderRadius: borderRadius.sm,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: AdminColors.surfaceHover,
   },
   userAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: scaleWidth(36),
+    height: scaleWidth(36),
+    borderRadius: scaleWidth(18),
     backgroundColor: AdminColors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 8,
+    marginLeft: spacing.xs,
   },
   pageContent: {
     flex: 1,
@@ -457,11 +469,11 @@ const styles = StyleSheet.create({
     backgroundColor: AdminColors.background,
   },
   mobileHeader: {
-    height: 60,
+    height: scaleHeight(60),
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.md,
     backgroundColor: AdminColors.surface,
     borderBottomWidth: 1,
     borderBottomColor: AdminColors.border,
@@ -469,46 +481,46 @@ const styles = StyleSheet.create({
   mobileLogo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.xs,
   },
   mobileLogoText: {
-    fontSize: 16,
+    fontSize: scaleFont(16),
     fontWeight: '600',
     color: AdminColors.text,
   },
   mobileHeaderRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: spacing.sm,
   },
   mobileHeaderButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
+    width: scaleWidth(36),
+    height: scaleWidth(36),
+    borderRadius: borderRadius.sm,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: AdminColors.surfaceHover,
   },
   mobileUserAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: scaleWidth(32),
+    height: scaleWidth(32),
+    borderRadius: scaleWidth(16),
     backgroundColor: AdminColors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   mobileContent: {
     flex: 1,
-    padding: 16,
+    padding: spacing.md,
   },
   mobileTabBar: {
-    height: 70,
+    height: getMobileTabBarHeight(),
     flexDirection: 'row',
     backgroundColor: AdminColors.surface,
     borderTopWidth: 1,
     borderTopColor: AdminColors.border,
-    paddingBottom: 8,
-    paddingTop: 8,
+    paddingBottom: Platform.OS === 'ios' ? scaleHeight(8) : scaleHeight(4),
+    paddingTop: scaleHeight(4),
   },
   mobileTabItem: {
     flex: 1,
@@ -516,18 +528,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   mobileTabIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
+    width: scaleWidth(40),
+    height: scaleWidth(40),
+    borderRadius: borderRadius.sm,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: scaleHeight(4),
   },
   mobileTabIconActive: {
     backgroundColor: 'rgba(78, 205, 196, 0.15)',
   },
   mobileTabLabel: {
-    fontSize: 10,
+    fontSize: scaleFont(10),
     color: AdminColors.textSecondary,
     textAlign: 'center',
   },

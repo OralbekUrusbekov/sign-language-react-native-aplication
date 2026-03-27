@@ -4,10 +4,10 @@
     "slug": "sign-language-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon-light-32x32.png",
+    "icon": "./assets/tyndau-logo.jpg",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/icon-light-32x32.png",
+      "image": "./assets/tyndau-logo.jpg",
       "resizeMode": "contain",
       "backgroundColor": "#1E3A5F"
     },
@@ -24,7 +24,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon-light-32x32.png",
+        "foregroundImage": "./assets/tyndau-logo.jpg",
         "backgroundColor": "#1E3A5F"
       },
       "package": "com.signlanguage.app",
@@ -34,7 +34,7 @@
       ]
     },
     "web": {
-      "favicon": "./assets/icon-light-32x32.png"
+      "favicon": "./assets/tyndau-logo.jpg"
     },
     "plugins": [
       "expo-router",

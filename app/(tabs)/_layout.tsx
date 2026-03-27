@@ -1,25 +1,29 @@
+// app/_layout.tsx (жаңартылған)
 import React from 'react';
-import { router, Tabs } from 'expo-router';
+import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Platform, StyleSheet, TouchableOpacity, View, Text} from 'react-native';
+import { Platform, StyleSheet, View, Dimensions } from 'react-native';
+import { scaleWidth, scaleHeight, scaleFont, spacing, borderRadius, getTabBarStyle } from '@/constants/responsive';
 
-const Colors = {
-  primary: '#4ECDC4',
-  gray400: '#9CA3AF',
-  gray100: '#F3F4F6',
+// TYNDAU Theme Colors (өзгеріссіз)
+const TyndauColors = {
+  primary: '#1E3A5F',
+  secondary: '#4ECDC4',
+  gray400: '#94A3B8',
+  gray100: '#F0F4F8',
   white: '#FFFFFF',
 };
 
 const Shadows = {
   lg: {
-    shadowColor: '#000',
+    shadowColor: '#1E3A5F',
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: -4,
     },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOpacity: 0.1,
+    shadowRadius: scaleWidth(16),
+    elevation: 12,
   },
 };
 
@@ -30,13 +34,14 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.gray400,
-        tabBarStyle: styles.tabBar,
+        tabBarActiveTintColor: TyndauColors.secondary,
+        tabBarInactiveTintColor: TyndauColors.gray400,
+        tabBarStyle: getTabBarStyle(),
         tabBarLabelStyle: styles.tabBarLabel,
         tabBarItemStyle: styles.tabBarItem,
       }}
     >
+      {/* ... tabs content remains same ... */}
       <Tabs.Screen
         name="index"
         options={{
@@ -53,7 +58,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="text-to-speech"
         options={{
-          title: 'Сөйлеу',
+          title: 'Soileu',
           tabBarIcon: ({ color, focused }) => (
             <TabIcon
               name={focused ? 'volume-high' : 'volume-high-outline'}
@@ -66,7 +71,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="speech-to-text"
         options={{
-          title: 'Тыңдау',
+          title: 'Tyndau',
           tabBarIcon: ({ color, focused }) => (
             <TabIcon
               name={focused ? 'mic' : 'mic-outline'}
@@ -79,7 +84,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="library"
         options={{
-          title: 'Кітапхана',
+          title: 'Kitaphana',
           tabBarIcon: ({ color, focused }) => (
             <TabIcon
               name={focused ? 'library' : 'library-outline'}
@@ -92,7 +97,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Баптау',
+          title: 'Baptau',
           tabBarIcon: ({ color, focused }) => (
             <TabIcon
               name={focused ? 'settings' : 'settings-outline'}
@@ -102,9 +107,6 @@ export default function TabLayout() {
           ),
         }}
       />
-  
-
-     
     </Tabs>
   );
 }
@@ -112,46 +114,29 @@ export default function TabLayout() {
 function TabIcon({ name, color, focused }: { name: IconName; color: string; focused: boolean }) {
   return (
     <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
-      <Ionicons name={name} size={24} color={color} />
+      <Ionicons name={name} size={scaleWidth(24)} color={color} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  tabBar: {
-    position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 25 : 15,
-    left: 15,
-    right: 15,
-    height: 70,
-    borderRadius: 20,
-    backgroundColor: Colors.white,
-    borderTopWidth: 0,
-    paddingBottom: 0,
-    paddingTop: 10,
-    ...Shadows.lg,
-  },
   tabBarLabel: {
-    fontSize: 10,
-    fontWeight: '500',
-    marginTop: 4,
+    fontSize: scaleFont(10),
+    fontWeight: '600',
+    marginTop: scaleHeight(4),
+    letterSpacing: 0.3,
   },
   tabBarItem: {
-    paddingTop: 5,
+    paddingTop: scaleHeight(6),
   },
   iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: scaleWidth(42),
+    height: scaleWidth(42),
+    borderRadius: borderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
   },
   iconContainerActive: {
-    backgroundColor: Colors.gray100,
-  },
-  adminButton: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: 'rgba(78, 205, 196, 0.12)',
   },
 });

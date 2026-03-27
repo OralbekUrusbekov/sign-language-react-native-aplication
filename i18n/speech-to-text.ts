@@ -5,6 +5,11 @@ export const speechTranslations = {
     // Тақырыптар
     title: 'Тыңдау',
     subtitle: 'Дауысты текстке айналдыру',
+    // i18n/speech-to-text/kz.json
+
+
+
+
     
     // Жүктеу
     loading: 'Жүктелуде...',

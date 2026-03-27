@@ -4,6 +4,7 @@ export const settingsTranslations = {
   kz: {
     // Тақырыптар
     title: 'Баптаулар',
+    listeningLanguage: 'Тыңдау тілі',
     subtitle: 'Қосымшаны баптау',
     
     // Жүктеу
@@ -89,6 +90,7 @@ export const settingsTranslations = {
     // Загрузка
     loading: 'Загрузка настроек...',
     saving: 'Сохранение...',
+    listeningLanguage: 'Язык распознавания',
     
     // Секции
     general: 'Общие',
@@ -175,6 +177,7 @@ export const settingsTranslations = {
     speech: 'Speech',
     notifications: 'Notifications',
     about: 'About',
+    listeningLanguage: 'Listening Language',
     
     // General settings
     language: 'Language',

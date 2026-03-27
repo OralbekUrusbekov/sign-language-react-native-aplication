@@ -1,3 +1,4 @@
+// app/admin/words.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -16,27 +17,41 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { API_BASE_URL } from '@/config/api';
+import {
+  scaleWidth,
+  scaleHeight,
+  scaleFont,
+  spacing,
+  borderRadius,
+  isMobile,
+  isTablet,
+  getContentPadding,
+  getCardGap,
+  getModalMaxHeight,
+  getModalWidth,
+  getTableCellPadding,
+  getButtonHeight,
+  responsiveFont,
+} from '@/constants/admin-responsive';
 
 const { width, height } = Dimensions.get('window');
-const isWeb = Platform.OS === 'web';
-const isMobile = width < 768;
 
-// Admin Theme Colors
+// TYNDAU Admin Theme Colors
 const AdminColors = {
-  background: '#0a0a0a',
-  surface: '#141414',
-  surfaceHover: '#1a1a1a',
-  border: '#262626',
+  background: '#0D1F33',
+  surface: '#1E3A5F',
+  surfaceHover: '#2E5A8F',
+  border: '#2E5A8F',
   primary: '#4ECDC4',
-  primaryDark: '#3EBDB4',
-  secondary: '#1E3A5F',
+  primaryDark: '#2EAD9F',
+  secondary: '#6EE7DE',
   text: '#ffffff',
-  textSecondary: '#a1a1aa',
-  textMuted: '#71717a',
-  success: '#22c55e',
-  warning: '#f59e0b',
-  error: '#ef4444',
-  info: '#3b82f6',
+  textSecondary: '#CBD5E1',
+  textMuted: '#94A3B8',
+  success: '#10B981',
+  warning: '#F59E0B',
+  error: '#EF4444',
+  info: '#3B82F6',
 };
 
 interface Word {
@@ -46,7 +61,6 @@ interface Word {
   text_en: string | null;
   category: string;
   icon: string | null;
-  audio_url: string | null;
   is_active: boolean;
   order_index: number;
   created_at: string;
@@ -131,7 +145,6 @@ export default function WordsManagement() {
       
       const data = await response.json();
       
-      // Update categories with counts from API
       setCategories(prevCategories => 
         prevCategories.map(cat => {
           const apiCat = data.find((c: any) => c.id === cat.id);
@@ -330,13 +343,13 @@ export default function WordsManagement() {
           </Text>
         </View>
         <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
-          <Ionicons name="add" size={24} color={AdminColors.background} />
+          <Ionicons name="add" size={scaleWidth(24)} color={AdminColors.background} />
         </TouchableOpacity>
       </View>
 
       {/* Search */}
       <View style={styles.searchContainer}>
-        <Ionicons name="search-outline" size={20} color={AdminColors.textMuted} />
+        <Ionicons name="search-outline" size={scaleWidth(20)} color={AdminColors.textMuted} />
         <TextInput
           style={styles.searchInput}
           placeholder="Сөз іздеу..."
@@ -346,7 +359,7 @@ export default function WordsManagement() {
         />
         {searchQuery ? (
           <TouchableOpacity onPress={clearSearch}>
-            <Ionicons name="close-circle" size={20} color={AdminColors.textMuted} />
+            <Ionicons name="close-circle" size={scaleWidth(20)} color={AdminColors.textMuted} />
           </TouchableOpacity>
         ) : null}
       </View>
@@ -400,7 +413,7 @@ export default function WordsManagement() {
                 <View style={styles.wordIcon}>
                   <Ionicons
                     name={word.icon as any || (word.is_active ? 'text-outline' : 'ban-outline')}
-                    size={20}
+                    size={scaleWidth(20)}
                     color={word.is_active ? AdminColors.primary : AdminColors.textMuted}
                   />
                 </View>
@@ -446,7 +459,7 @@ export default function WordsManagement() {
             {/* Category and Actions */}
             <View style={styles.wordCardFooter}>
               <View style={styles.categoryBadge}>
-                <Ionicons name="pricetag-outline" size={12} color={AdminColors.info} />
+                <Ionicons name="pricetag-outline" size={scaleWidth(12)} color={AdminColors.info} />
                 <Text style={styles.categoryBadgeText}>
                   {categories.find(c => c.id === word.category)?.nameKz || word.category}
                 </Text>
@@ -457,13 +470,13 @@ export default function WordsManagement() {
                   style={styles.actionButton}
                   onPress={() => openEditModal(word)}
                 >
-                  <Ionicons name="pencil-outline" size={18} color={AdminColors.info} />
+                  <Ionicons name="pencil-outline" size={scaleWidth(18)} color={AdminColors.info} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.actionButton, styles.deleteButton]}
                   onPress={() => handleDelete(word.id)}
                 >
-                  <Ionicons name="trash-outline" size={18} color={AdminColors.error} />
+                  <Ionicons name="trash-outline" size={scaleWidth(18)} color={AdminColors.error} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -482,7 +495,7 @@ export default function WordsManagement() {
 
         {words.length === 0 && (
           <View style={styles.emptyState}>
-            <Ionicons name="search-outline" size={64} color={AdminColors.textMuted} />
+            <Ionicons name="search-outline" size={scaleWidth(64)} color={AdminColors.textMuted} />
             <Text style={styles.emptyStateText}>Сөздер табылмады</Text>
             <Text style={styles.emptyStateSubtext}>
               {searchQuery || selectedCategory 
@@ -501,13 +514,13 @@ export default function WordsManagement() {
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { width: getModalWidth(), alignSelf: 'center' }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
                 {editingWord ? 'Сөзді өзгерту' : 'Жаңа сөз қосу'}
               </Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={24} color={AdminColors.textSecondary} />
+                <Ionicons name="close" size={scaleWidth(24)} color={AdminColors.textSecondary} />
               </TouchableOpacity>
             </View>
 
@@ -623,68 +636,68 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     backgroundColor: AdminColors.surface,
     borderBottomWidth: 1,
     borderBottomColor: AdminColors.border,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: isMobile ? scaleFont(20) : scaleFont(24),
     fontWeight: '700',
     color: AdminColors.text,
   },
   headerSubtitle: {
-    fontSize: 13,
+    fontSize: scaleFont(13),
     color: AdminColors.textMuted,
-    marginTop: 2,
+    marginTop: scaleHeight(2),
   },
   addButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: scaleWidth(48),
+    height: scaleWidth(48),
+    borderRadius: scaleWidth(24),
     backgroundColor: AdminColors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: AdminColors.primary,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: scaleHeight(4) },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowRadius: scaleWidth(8),
     elevation: 4,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: AdminColors.surface,
-    margin: 16,
-    marginTop: 12,
-    marginBottom: 8,
-    paddingHorizontal: 16,
-    paddingVertical: Platform.OS === 'ios' ? 14 : 10,
-    borderRadius: 12,
+    margin: spacing.md,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: Platform.OS === 'ios' ? scaleHeight(14) : scaleHeight(10),
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: AdminColors.border,
-    gap: 10,
+    gap: spacing.xs,
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: scaleFont(16),
     color: AdminColors.text,
     padding: 0,
   },
   categoriesContainer: {
-    maxHeight: 50,
-    marginBottom: 12,
+    maxHeight: scaleHeight(50),
+    marginBottom: spacing.sm,
   },
   categoriesContent: {
-    paddingHorizontal: 16,
-    gap: 8,
+    paddingHorizontal: spacing.md,
+    gap: spacing.xs,
   },
   categoryChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: scaleHeight(8),
     backgroundColor: AdminColors.surface,
-    borderRadius: 20,
+    borderRadius: borderRadius.xxl,
     borderWidth: 1,
     borderColor: AdminColors.border,
   },
@@ -693,7 +706,7 @@ const styles = StyleSheet.create({
     borderColor: AdminColors.primary,
   },
   categoryChipText: {
-    fontSize: 14,
+    fontSize: scaleFont(14),
     color: AdminColors.textSecondary,
     fontWeight: '500',
   },
@@ -702,37 +715,37 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     flex: 1,
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.md,
   },
   wordCard: {
     backgroundColor: AdminColors.surface,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: borderRadius.xl,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
     borderWidth: 1,
     borderColor: AdminColors.border,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: scaleHeight(2) },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowRadius: scaleWidth(4),
     elevation: 2,
   },
   wordCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: spacing.sm,
   },
   wordMainInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    gap: 12,
+    gap: spacing.sm,
   },
   wordIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: scaleWidth(44),
+    height: scaleWidth(44),
+    borderRadius: borderRadius.lg,
     backgroundColor: `${AdminColors.primary}15`,
     justifyContent: 'center',
     alignItems: 'center',
@@ -741,29 +754,29 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   wordKz: {
-    fontSize: 18,
+    fontSize: scaleFont(18),
     fontWeight: '600',
     color: AdminColors.text,
-    marginBottom: 4,
+    marginBottom: scaleHeight(4),
   },
   wordInactive: {
     opacity: 0.5,
     textDecorationLine: 'line-through',
   },
   wordTranslations: {
-    gap: 2,
+    gap: scaleHeight(2),
   },
   wordTranslation: {
-    fontSize: 13,
+    fontSize: scaleFont(13),
     color: AdminColors.textSecondary,
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: scaleHeight(4),
+    borderRadius: borderRadius.lg,
+    gap: spacing.xxs,
   },
   statusActive: {
     backgroundColor: `${AdminColors.success}15`,
@@ -772,9 +785,9 @@ const styles = StyleSheet.create({
     backgroundColor: `${AdminColors.textMuted}15`,
   },
   statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: scaleWidth(6),
+    height: scaleWidth(6),
+    borderRadius: scaleWidth(3),
   },
   statusDotActive: {
     backgroundColor: AdminColors.success,
@@ -783,7 +796,7 @@ const styles = StyleSheet.create({
     backgroundColor: AdminColors.textMuted,
   },
   statusText: {
-    fontSize: 11,
+    fontSize: scaleFont(11),
     fontWeight: '500',
   },
   statusTextActive: {
@@ -796,7 +809,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 12,
+    paddingTop: spacing.sm,
     borderTopWidth: 1,
     borderTopColor: AdminColors.border,
   },
@@ -804,24 +817,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: `${AdminColors.info}15`,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-    gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: scaleHeight(4),
+    borderRadius: borderRadius.sm,
+    gap: spacing.xxs,
   },
   categoryBadgeText: {
-    fontSize: 12,
+    fontSize: scaleFont(12),
     color: AdminColors.info,
     fontWeight: '500',
   },
   cardActions: {
     flexDirection: 'row',
-    gap: 8,
+    gap: spacing.xs,
   },
   actionButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: scaleWidth(36),
+    height: scaleWidth(36),
+    borderRadius: borderRadius.md,
     backgroundColor: AdminColors.surfaceHover,
     justifyContent: 'center',
     alignItems: 'center',
@@ -832,106 +845,109 @@ const styles = StyleSheet.create({
   wordMetadata: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 8,
-    paddingTop: 8,
+    marginTop: spacing.xs,
+    paddingTop: spacing.xs,
     borderTopWidth: 1,
     borderTopColor: AdminColors.border,
   },
   metadataText: {
-    fontSize: 11,
+    fontSize: scaleFont(11),
     color: AdminColors.textMuted,
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
+    paddingVertical: scaleHeight(60),
   },
   emptyStateText: {
-    fontSize: 18,
+    fontSize: scaleFont(18),
     fontWeight: '600',
     color: AdminColors.textSecondary,
-    marginTop: 16,
+    marginTop: spacing.md,
   },
   emptyStateSubtext: {
-    fontSize: 14,
+    fontSize: scaleFont(14),
     color: AdminColors.textMuted,
-    marginTop: 4,
+    marginTop: spacing.xxs,
+    textAlign: 'center',
+    paddingHorizontal: spacing.lg,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: AdminColors.background,
-    gap: 16,
+    gap: spacing.md,
   },
   loadingText: {
     color: AdminColors.textSecondary,
-    fontSize: 14,
+    fontSize: scaleFont(14),
   },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.9)',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalContent: {
     backgroundColor: AdminColors.surface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderRadius: borderRadius.xxl,
     borderWidth: 1,
     borderColor: AdminColors.border,
-    maxHeight: height * 0.9,
+    maxHeight: getModalMaxHeight(),
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    padding: spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: AdminColors.border,
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: scaleFont(18),
     fontWeight: '600',
     color: AdminColors.text,
   },
   modalBody: {
-    padding: 20,
-    maxHeight: height * 0.6,
+    padding: spacing.lg,
+    maxHeight: height * 0.5,
   },
   formGroup: {
-    marginBottom: 20,
+    marginBottom: spacing.lg,
   },
   formLabel: {
-    fontSize: 14,
+    fontSize: scaleFont(14),
     fontWeight: '500',
     color: AdminColors.textSecondary,
-    marginBottom: 8,
+    marginBottom: spacing.xs,
   },
   formInput: {
     backgroundColor: AdminColors.background,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: scaleHeight(14),
+    fontSize: scaleFont(16),
     color: AdminColors.text,
     borderWidth: 1,
     borderColor: AdminColors.border,
   },
   helperText: {
-    fontSize: 12,
+    fontSize: scaleFont(12),
     color: AdminColors.textMuted,
-    marginTop: 4,
+    marginTop: spacing.xxs,
   },
   categorySelect: {
     flexDirection: 'row',
-    gap: 8,
-    paddingVertical: 4,
+    gap: spacing.xs,
+    paddingVertical: scaleHeight(4),
+    flexWrap: 'wrap',
   },
   categoryOption: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: spacing.md,
+    paddingVertical: scaleHeight(10),
     backgroundColor: AdminColors.background,
-    borderRadius: 20,
+    borderRadius: borderRadius.xxl,
     borderWidth: 1,
     borderColor: AdminColors.border,
   },
@@ -940,7 +956,7 @@ const styles = StyleSheet.create({
     borderColor: AdminColors.primary,
   },
   categoryOptionText: {
-    fontSize: 14,
+    fontSize: scaleFont(14),
     color: AdminColors.textSecondary,
   },
   categoryOptionTextActive: {
@@ -949,35 +965,35 @@ const styles = StyleSheet.create({
   },
   modalFooter: {
     flexDirection: 'row',
-    gap: 12,
-    padding: 20,
+    gap: spacing.sm,
+    padding: spacing.lg,
     borderTopWidth: 1,
     borderTopColor: AdminColors.border,
   },
   cancelButton: {
     flex: 1,
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: scaleHeight(16),
+    borderRadius: borderRadius.lg,
     backgroundColor: AdminColors.surfaceHover,
     alignItems: 'center',
   },
   cancelButtonText: {
-    fontSize: 16,
+    fontSize: scaleFont(16),
     color: AdminColors.textSecondary,
     fontWeight: '500',
   },
   saveButton: {
     flex: 1,
-    paddingVertical: 16,
+    paddingVertical: scaleHeight(16),
     backgroundColor: AdminColors.primary,
-    borderRadius: 12,
+    borderRadius: borderRadius.lg,
     alignItems: 'center',
   },
   saveButtonDisabled: {
     opacity: 0.5,
   },
   saveButtonText: {
-    fontSize: 16,
+    fontSize: scaleFont(16),
     color: AdminColors.background,
     fontWeight: '600',
   },

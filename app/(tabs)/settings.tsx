@@ -29,6 +29,7 @@ type SettingItemProps = {
   onPress?: () => void;
   rightElement?: React.ReactNode;
   iconColor?: string;
+  
 };
 
 function SettingItem({ icon, title, subtitle, onPress, rightElement, iconColor }: SettingItemProps) {
@@ -62,11 +63,12 @@ export default function SettingsScreen() {
   const {
     appLanguage,
     speechLanguage,
+    listeningLanguage, 
     speechRate,
     speechPitch,
-  
     setAppLanguage,
     setSpeechLanguage,
+    setListeningLanguage, 
     setSpeechRate,
     setSpeechPitch
   } = useSettings();
@@ -106,35 +108,14 @@ export default function SettingsScreen() {
         notifications_enabled: true,
         auto_speak: true,
         camera_quality: 'high',
+        listening_language: 'kz',
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const updateSetting = async <K extends keyof UserSettings>(key: K, value: UserSettings[K]) => {
-    if (!settings || !deviceId) return;
-
-    try {
-      setIsSaving(true);
-
-      const newSettings = { ...settings, [key]: value };
-      setSettings(newSettings);
-
-      await updateUserSettings(deviceId, { [key]: value });
-
-      // CONTEXT UPDATE
-      if (key === 'language') setAppLanguage(value as any);
-      if (key === 'speech_rate') setSpeechRate(value as number);
-      if (key === 'speech_pitch') setSpeechPitch(value as number);
-
-    } catch (error) {
-      console.log('Error updating setting:', error);
-      Alert.alert(t('error'), t('errorSaving'));
-    } finally {
-      setIsSaving(false);
-    }
-  };
+ 
 
   const handleLanguageChange = () => {
     Alert.alert(
@@ -224,6 +205,54 @@ export default function SettingsScreen() {
     );
   }
 
+    const updateSetting = async <K extends keyof UserSettings>(key: K, value: UserSettings[K]) => {
+    if (!settings || !deviceId) return;
+
+    try {
+      setIsSaving(true);
+
+      const newSettings = { ...settings, [key]: value };
+      setSettings(newSettings);
+
+      await updateUserSettings(deviceId, { [key]: value });
+
+      // CONTEXT UPDATE
+      if (key === 'language') setAppLanguage(value as any);
+      if (key === 'speech_rate') setSpeechRate(value as number);
+      if (key === 'speech_pitch') setSpeechPitch(value as number);
+      if (key === 'listening_language') setListeningLanguage(value as any); // Жаңа
+
+    } catch (error) {
+      console.log('Error updating setting:', error);
+      Alert.alert(t('error'), t('errorSaving'));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Тыңдау тілінің атауын алу
+  const getListeningLanguageName = (lang: string) => {
+    switch (lang) {
+      case 'kz': return t('languages.kz');
+      case 'ru': return t('languages.ru');
+      case 'en': return t('languages.en');
+      default: return t('languages.kz');
+    }
+  };
+
+   const handleListeningLanguageChange = () => {
+    Alert.alert(
+      t('listeningLanguageTitle') || 'Тыңдау тілі',
+      t('listeningLanguageDesc') || 'Қолмен таңбаларды тану үшін тілді таңдаңыз',
+      [
+        { text: t('languages.kz'), onPress: () => setListeningLanguage('kz') },
+        { text: t('languages.ru'), onPress: () => setListeningLanguage('ru') },
+        { text: t('languages.en'), onPress: () => setListeningLanguage('en') },
+        { text: t('cancel'), style: 'cancel' },
+      ]
+    );
+  };
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -249,6 +278,14 @@ export default function SettingsScreen() {
               onPress={handleLanguageChange}
               iconColor={Colors.secondary}
             />
+            <SettingItem
+              icon="ear"
+              title={t('listeningLanguage') || 'Тыңдау тілі'}
+              subtitle={getListeningLanguageName(listeningLanguage)}
+              onPress={handleListeningLanguageChange}
+              iconColor="#4ECDC4"
+            />
+
             <SettingItem
               icon="color-palette"
               title={t('theme')}
@@ -379,6 +416,9 @@ export default function SettingsScreen() {
   );
 }
 
+// app/settings.tsx (стильдер бөлігі)
+import { scaleWidth, scaleHeight, scaleFont, spacing, borderRadius, fontSize } from '@/constants/responsive';
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -391,150 +431,154 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   loadingText: {
-    marginTop: Spacing.md,
+    marginTop: spacing.md,
     color: Colors.textSecondary,
-    fontSize: Typography.fontSizes.md,
+    fontSize: fontSize.md,
   },
   header: {
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.md,
+    paddingTop: Platform.OS === 'ios' ? scaleHeight(60) : scaleHeight(40),
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
     backgroundColor: Colors.primary,
     position: 'relative',
+    borderBottomLeftRadius: borderRadius.xxl,
+    borderBottomRightRadius: borderRadius.xxl,
   },
   headerTitle: {
-    fontSize: Typography.fontSizes.xxl,
+    fontSize: fontSize.xxl,
     fontWeight: Typography.fontWeights.bold,
     color: Colors.white,
   },
   headerSubtitle: {
-    fontSize: Typography.fontSizes.sm,
-    color: Colors.gray300,
-    marginTop: Spacing.xs,
+    fontSize: fontSize.sm,
+    color: Colors.secondary,
+    marginTop: spacing.xs,
   },
   savingIndicator: {
     position: 'absolute',
-    right: Spacing.lg,
-    top: Platform.OS === 'ios' ? 70 : 50,
+    right: spacing.lg,
+    top: Platform.OS === 'ios' ? scaleHeight(70) : scaleHeight(50),
   },
   content: {
     flex: 1,
   },
   section: {
-    marginTop: Spacing.lg,
-    paddingHorizontal: Spacing.md,
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.md,
   },
   sectionTitle: {
-    fontSize: Typography.fontSizes.sm,
+    fontSize: fontSize.sm,
     fontWeight: Typography.fontWeights.semibold,
     color: Colors.textSecondary,
-    marginBottom: Spacing.sm,
-    marginLeft: Spacing.sm,
+    marginBottom: spacing.sm,
+    marginLeft: spacing.sm,
     textTransform: 'uppercase',
   },
   sectionContent: {
-    backgroundColor: Colors.white,
-    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: borderRadius.xl,
     overflow: 'hidden',
     ...Shadows.sm,
+    borderWidth: 1,
+    borderColor: Colors.gray200,
   },
   settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: Spacing.md,
+    padding: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: Colors.gray100,
   },
   settingIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: scaleWidth(36),
+    height: scaleWidth(36),
+    borderRadius: borderRadius.md,
     justifyContent: 'center',
     alignItems: 'center',
   },
   settingContent: {
     flex: 1,
-    marginLeft: Spacing.md,
+    marginLeft: spacing.md,
   },
   settingTitle: {
-    fontSize: Typography.fontSizes.md,
+    fontSize: fontSize.md,
     fontWeight: Typography.fontWeights.medium,
     color: Colors.textPrimary,
   },
   settingSubtitle: {
-    fontSize: Typography.fontSizes.sm,
+    fontSize: fontSize.sm,
     color: Colors.textSecondary,
-    marginTop: 2,
+    marginTop: scaleHeight(2),
   },
   sliderItem: {
-    padding: Spacing.md,
+    padding: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: Colors.gray100,
   },
   sliderHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: Spacing.sm,
+    marginBottom: spacing.sm,
   },
   sliderValue: {
     marginLeft: 'auto',
-    fontSize: Typography.fontSizes.sm,
+    fontSize: fontSize.sm,
     fontWeight: Typography.fontWeights.semibold,
     color: Colors.primary,
   },
   slider: {
     width: '100%',
-    height: 40,
-    marginLeft: Spacing.md + 36,
+    height: scaleHeight(40),
+    marginLeft: spacing.md + scaleWidth(36),
   },
   infoItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: Spacing.md,
+    padding: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: Colors.gray100,
   },
   infoLabel: {
-    fontSize: Typography.fontSizes.sm,
+    fontSize: fontSize.sm,
     color: Colors.textSecondary,
   },
   infoValue: {
-    fontSize: Typography.fontSizes.sm,
+    fontSize: fontSize.sm,
     fontWeight: Typography.fontWeights.medium,
     color: Colors.textPrimary,
     maxWidth: '60%',
   },
   appInfo: {
     alignItems: 'center',
-    paddingVertical: Spacing.xl,
+    paddingVertical: spacing.xl,
   },
   appCopyright: {
-    fontSize: Typography.fontSizes.xs,
+    fontSize: fontSize.xs,
     color: Colors.gray400,
-    marginTop: Spacing.xs,
+    marginTop: spacing.xs,
   },
   adminButtonContainer: {
-    paddingHorizontal: Spacing.md,
-    marginTop: Spacing.lg,
-    marginBottom: Spacing.xl,
+    paddingHorizontal: spacing.md,
+    marginTop: spacing.lg,
+    marginBottom: spacing.xl,
   },
   adminButton: {
-    backgroundColor: Colors.primary,
-    paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.secondary,
+    paddingVertical: spacing.lg,
+    borderRadius: borderRadius.xl,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: Spacing.sm,
-    ...Shadows.md,
+    gap: spacing.sm,
+    ...Shadows.lg,
   },
   adminButtonText: {
-    color: Colors.white,
+    color: Colors.primary,
     fontWeight: Typography.fontWeights.bold,
-    fontSize: Typography.fontSizes.md,
+    fontSize: fontSize.md,
   },
   bottomPadding: {
-    height: 40,
+    height: scaleHeight(40),
   },
 });

@@ -1,3 +1,4 @@
+// app/admin/books.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -19,27 +20,42 @@ import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { API_BASE_URL } from '@/config/api';
+import {
+  scaleWidth,
+  scaleHeight,
+  scaleFont,
+  spacing,
+  borderRadius,
+  isMobile,
+  isTablet,
+  isDesktop,
+  getContentPadding,
+  getCardGap,
+  getGridColumns,
+  getModalMaxHeight,
+  getModalWidth,
+  getButtonHeight,
+  responsiveFont,
+} from '@/constants/admin-responsive';
 
 const { width, height } = Dimensions.get('window');
-const isWeb = Platform.OS === 'web';
-const isMobile = width < 768;
 
-// Admin Theme Colors
+// TYNDAU Admin Theme Colors
 const AdminColors = {
-  background: '#0a0a0a',
-  surface: '#141414',
-  surfaceHover: '#1a1a1a',
-  border: '#262626',
+  background: '#0D1F33',
+  surface: '#1E3A5F',
+  surfaceHover: '#2E5A8F',
+  border: '#2E5A8F',
   primary: '#4ECDC4',
-  primaryDark: '#3EBDB4',
-  secondary: '#1E3A5F',
+  primaryDark: '#2EAD9F',
+  secondary: '#6EE7DE',
   text: '#ffffff',
-  textSecondary: '#a1a1aa',
-  textMuted: '#71717a',
-  success: '#22c55e',
-  warning: '#f59e0b',
-  error: '#ef4444',
-  info: '#3b82f6',
+  textSecondary: '#CBD5E1',
+  textMuted: '#94A3B8',
+  success: '#10B981',
+  warning: '#F59E0B',
+  error: '#EF4444',
+  info: '#3B82F6',
 };
 
 interface Book {
@@ -101,9 +117,7 @@ export default function BooksManagement() {
     page_count: '',
   });
 
-
-
-  // Filtered books computed property
+  // Filtered books
   const filteredBooks = books.filter(book => {
     const matchesSearch = !searchQuery ||
       book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -112,7 +126,7 @@ export default function BooksManagement() {
     return matchesSearch && matchesCategory;
   });
 
-  // Fetch books with filters
+  // Fetch books
   const fetchBooks = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
@@ -144,7 +158,7 @@ export default function BooksManagement() {
     }
   }, [selectedCategory, searchQuery]);
 
-  // Fetch categories with counts
+  // Fetch categories
   const fetchCategories = useCallback(async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/books/categories`);
@@ -184,12 +198,11 @@ export default function BooksManagement() {
     loadData();
   }, []);
 
-  // Search with debounce
+  // Search debounce
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchBooks(true);
     }, 500);
-
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
@@ -205,7 +218,6 @@ export default function BooksManagement() {
 
   // Open add modal
   const openAddModal = () => {
-
     setEditingBook(null);
     setSelectedPdf(null);
     setUploadProgress(0);
@@ -244,7 +256,6 @@ export default function BooksManagement() {
       if (!result.canceled && result.assets && result.assets[0]) {
         const file = result.assets[0];
         
-        // Check file size (max 50MB)
         if (file.size && file.size > 50 * 1024 * 1024) {
           Alert.alert('Қате', 'Файл өлшемі 50МБ-тан аспауы керек');
           return;
@@ -264,239 +275,20 @@ export default function BooksManagement() {
   };
 
   // Upload PDF file
-  // const uploadPdf = async () => {
-  //   if (!selectedPdf) return null;
+  const uploadPdf = async () => {
+    if (!selectedPdf) return null;
 
-  //   try {
-  //             const uploadData = new FormData();
-
-  //       uploadData.append('file', {
-  //           uri:
-  //             Platform.OS === 'android'
-  //               ? selectedPdf.uri
-  //               : selectedPdf.uri.replace('file://', ''),
-  //           type: 'application/pdf',
-  //           name: selectedPdf.name,
-  //         } as any);
-  //       uploadData.append('title', formData.title);
-  //       uploadData.append('category', formData.category);
-
-  //       if (formData.author) uploadData.append('author', formData.author);
-  //       if (formData.description) uploadData.append('description', formData.description);
-
-  //     const response = await fetch(`${API_BASE_URL}/api/books`, {
-  //         method: 'POST',
-  //         body: uploadData,
-  //       });
-
-  //     if (!response.ok) {
-  //       const error = await response.json();
-  //       throw new Error(error.detail || 'Failed to upload book');
-  //     }
-
-  //     return await response.json();
-  //   } catch (error) {
-  //     console.error('Upload PDF error:', error);
-  //     throw error;
-  //   }
-  // };
-//   const uploadPdf = async () => {
-//   if (!selectedPdf) {
-//     console.log('❌ selectedPdf жоқ');
-//     return null;
-//   }
-
-//   try {
-//     console.log('📄 selectedPdf:', selectedPdf);
-//     console.log('📝 formData:', formData);
-//     console.log('🌐 API:', `${API_BASE_URL}/api/books`);
-
-//     const uploadData = new FormData();
-
-//     const newPath = `${selectedPdf.uri}_copy.pdf`;
-//     console.log('📂 copy from:', selectedPdf.uri);
-//     console.log('📂 copy to:', newPath);
-
-//     await FileSystem.copyAsync({
-//       from: selectedPdf.uri,
-//       to: newPath,
-//     });
-
-//     console.log('✅ copy done');
-
-//     const filePayload = {
-//       uri: newPath,
-//       type: 'application/pdf',
-//       name: selectedPdf.name,
-//     };
-
-//     console.log('📦 filePayload:', filePayload);
-
-//     uploadData.append('file', filePayload as any);
-//     console.log('✅ file appended');
-
-//     uploadData.append('title', formData.title);
-//     console.log('✅ title appended:', formData.title);
-
-//     uploadData.append('category', formData.category);
-//     console.log('✅ category appended:', formData.category);
-
-//     if (formData.author) {
-//       uploadData.append('author', formData.author);
-//       console.log('✅ author appended:', formData.author);
-//     }
-
-//     if (formData.description) {
-//       uploadData.append('description', formData.description);
-//       console.log('✅ description appended:', formData.description);
-//     }
-
-//     console.log('🚀 fetch басталды');
-
-//     const response = await fetch(`${API_BASE_URL}/api/books`, {
-//       method: 'POST',
-//       body: uploadData,
-//     });
-
-//     console.log('📡 response status:', response.status);
-
-//     const text = await response.text();
-//     console.log('📨 response text:', text);
-
-//     if (!response.ok) {
-//       throw new Error(text);
-//     }
-
-//     console.log('✅ upload success');
-
-//     return JSON.parse(text);
-//   } catch (error) {
-//     console.log('🔥 FULL ERROR:', error);
-//     throw error;
-//   }
-// };
-
-const uploadPdf = async () => {
-  
-
-  if (!selectedPdf) {
-    console.log("❌ selectedPdf жоқ");
-    return null;
-  }
-
-  try {
-   
-    const uploadData = new FormData();
-
-    // ---- FILE PAYLOAD ----
-    const filePayload = {
-      uri:
-        Platform.OS === "android"
-          ? selectedPdf.uri
-          : selectedPdf.uri.replace("file://", ""),
-      type: selectedPdf.mimeType || "application/pdf",
-      name: selectedPdf.name || "upload.pdf",
-    };
-
-   
-
-    uploadData.append("file", filePayload as any);
-    uploadData.append("title", formData.title);
-    uploadData.append("category", formData.category);
-   
-    if (formData.author) {
-      uploadData.append("author", formData.author);
-    }
-
-    if (formData.description) {
-      uploadData.append("description", formData.description);
-    }
-
-    if (formData.page_count) {
-      uploadData.append("page_count", formData.page_count);
-    }
-
-    const startTime = Date.now();
-
-    const response = await fetch(`${API_BASE_URL}/api/books/`, {
-      method: "POST",
-      body: uploadData,
-    });
-
-
-    const endTime = Date.now();
-    response.headers.forEach((value, key) => {
-    });
-
-    const responseText = await response.text();
-
-    if (!response.ok) {
-      throw new Error(responseText);
-    }
-
-    const parsed = JSON.parse(responseText);
-    return parsed;
-
-  } catch (error) {
-    if (error instanceof Error) {
-      console.log("error message:", error.message);
-      console.log("error stack:", error.stack);
-    }
-
-    console.log("========== UPLOAD FAILED ==========");
-
-    throw error;
-  }
-};
-
-
-
-
-
-const handleSave = async () => {
-  if (!formData.title.trim()) {
-    Alert.alert('Қате', 'Кітап атауын енгізіңіз');
-    return;
-  }
-
-  if (!editingBook && !selectedPdf) {
-    Alert.alert('Қате', 'PDF файлын таңдаңыз');
-    return;
-  }
-
-  setSaving(true);
-
-  try {
-    
-    if (editingBook) {
-      const response = await fetch(`${API_BASE_URL}/api/books/${editingBook.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...formData,
-          page_count: parseInt(formData.page_count) || 0,
-        }),
-      });
-      
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Failed to update book');
-      }
-    } else {
-      
+    try {
       const uploadData = new FormData();
-      
+
       const filePayload: any = {
         uri: Platform.OS === "android" 
-          ? selectedPdf!.uri 
-          : selectedPdf!.uri.replace("file://", ""),
-        type: selectedPdf!.mimeType || "application/pdf",
-        name: selectedPdf!.name || "upload.pdf",
+          ? selectedPdf.uri 
+          : selectedPdf.uri.replace("file://", ""),
+        type: selectedPdf.mimeType || "application/pdf",
+        name: selectedPdf.name || "upload.pdf",
       };
-      
+
       uploadData.append("file", filePayload);
       uploadData.append("title", formData.title);
       uploadData.append("category", formData.category);
@@ -504,51 +296,76 @@ const handleSave = async () => {
       if (formData.author) uploadData.append("author", formData.author);
       if (formData.description) uploadData.append("description", formData.description);
       if (formData.page_count) uploadData.append("page_count", formData.page_count);
-      
-      
-      const startTime = Date.now();
-      
+
       const response = await fetch(`${API_BASE_URL}/api/books/`, {
         method: "POST",
         body: uploadData,
-        headers: {
-          'Accept': 'application/json',
-        },
       });
-      
+
       const responseText = await response.text();
-    
+
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${responseText}`);
+        throw new Error(responseText);
       }
-      
+
+      return JSON.parse(responseText);
+    } catch (error) {
+      console.error('Upload error:', error);
+      throw error;
+    }
+  };
+
+  // Save book
+  const handleSave = async () => {
+    if (!formData.title.trim()) {
+      Alert.alert('Қате', 'Кітап атауын енгізіңіз');
+      return;
     }
 
-    setModalVisible(false);
-    await loadData();
-    
-    Alert.alert(
-      'Сәтті',
-      editingBook ? 'Кітап сәтті өзгертілді' : 'Жаңа кітап сәтті қосылды'
-    );
-  } catch (error: any) {
-    console.error('🔥 Save error:', error);
-    console.error('Error name:', error.name);
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
-    
-    Alert.alert('Қате', 
-      `Қате түрі: ${error.name}\n` +
-      `Хабарлама: ${error.message}\n` +
-      `Код: ${error.code || 'жоқ'}`
-    );
-  } finally {
-    setSaving(false);
-    setUploadProgress(0);
-  }
-};
+    if (!editingBook && !selectedPdf) {
+      Alert.alert('Қате', 'PDF файлын таңдаңыз');
+      return;
+    }
 
-  
+    setSaving(true);
+
+    try {
+      if (editingBook) {
+        const response = await fetch(`${API_BASE_URL}/api/books/${editingBook.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ...formData,
+            page_count: parseInt(formData.page_count) || 0,
+          }),
+        });
+        
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.detail || 'Failed to update book');
+        }
+      } else {
+        await uploadPdf();
+      }
+
+      setModalVisible(false);
+      await loadData();
+      
+      Alert.alert(
+        'Сәтті',
+        editingBook ? 'Кітап сәтті өзгертілді' : 'Жаңа кітап сәтті қосылды'
+      );
+    } catch (error: any) {
+      console.error('Save error:', error);
+      Alert.alert('Қате', error.message || 'Сақтау кезінде қате орын алды');
+    } finally {
+      setSaving(false);
+      setUploadProgress(0);
+    }
+  };
+
   // Delete book
   const handleDelete = (bookId: number) => {
     Alert.alert(
@@ -582,7 +399,7 @@ const handleSave = async () => {
     );
   };
 
-  // Toggle book active status
+  // Toggle book status
   const toggleBookStatus = async (book: Book) => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/books/${book.id}`, {
@@ -653,7 +470,7 @@ const handleSave = async () => {
             >
               <Ionicons 
                 name="grid-outline" 
-                size={18} 
+                size={scaleWidth(18)} 
                 color={viewMode === 'grid' ? AdminColors.primary : AdminColors.textMuted} 
               />
             </TouchableOpacity>
@@ -663,20 +480,20 @@ const handleSave = async () => {
             >
               <Ionicons 
                 name="list-outline" 
-                size={18} 
+                size={scaleWidth(18)} 
                 color={viewMode === 'list' ? AdminColors.primary : AdminColors.textMuted} 
               />
             </TouchableOpacity>
           </View>
           <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
-            <Ionicons name="add" size={24} color={AdminColors.background} />
+            <Ionicons name="add" size={scaleWidth(24)} color={AdminColors.background} />
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Search */}
       <View style={styles.searchContainer}>
-        <Ionicons name="search-outline" size={20} color={AdminColors.textMuted} />
+        <Ionicons name="search-outline" size={scaleWidth(20)} color={AdminColors.textMuted} />
         <TextInput
           style={styles.searchInput}
           placeholder="Кітап іздеу..."
@@ -686,7 +503,7 @@ const handleSave = async () => {
         />
         {searchQuery ? (
           <TouchableOpacity onPress={clearSearch}>
-            <Ionicons name="close-circle" size={20} color={AdminColors.textMuted} />
+            <Ionicons name="close-circle" size={scaleWidth(20)} color={AdminColors.textMuted} />
           </TouchableOpacity>
         ) : null}
       </View>
@@ -714,7 +531,7 @@ const handleSave = async () => {
           >
             <Ionicons 
               name={cat.icon as any} 
-              size={14} 
+              size={scaleWidth(14)} 
               color={selectedCategory === cat.id ? AdminColors.background : AdminColors.textSecondary} 
             />
             <Text style={[styles.categoryChipText, selectedCategory === cat.id && styles.categoryChipTextActive]}>
@@ -756,13 +573,13 @@ const handleSave = async () => {
                     <Image source={{ uri: book.cover_url }} style={styles.bookCoverImage} />
                   ) : (
                     <View style={styles.bookCoverPlaceholder}>
-                      <Ionicons name="book" size={40} color={AdminColors.primary} />
+                      <Ionicons name="book" size={scaleWidth(40)} color={AdminColors.primary} />
                     </View>
                   )}
                   <View style={styles.bookCategoryBadge}>
                     <Ionicons 
                       name={categories.find(c => c.id === book.category)?.icon as any || 'book'} 
-                      size={10} 
+                      size={scaleWidth(10)} 
                       color={AdminColors.text} 
                     />
                     <Text style={styles.bookCategoryText}>
@@ -781,15 +598,15 @@ const handleSave = async () => {
                   
                   <View style={styles.bookMeta}>
                     <View style={styles.bookMetaItem}>
-                      <Ionicons name="document-text-outline" size={12} color={AdminColors.textMuted} />
+                      <Ionicons name="document-text-outline" size={scaleWidth(12)} color={AdminColors.textMuted} />
                       <Text style={styles.bookMetaText}>{book.page_count} бет</Text>
                     </View>
                     <View style={styles.bookMetaItem}>
-                      <Ionicons name="download-outline" size={12} color={AdminColors.textMuted} />
+                      <Ionicons name="download-outline" size={scaleWidth(12)} color={AdminColors.textMuted} />
                       <Text style={styles.bookMetaText}>{book.download_count}</Text>
                     </View>
                     <View style={styles.bookMetaItem}>
-                      <Ionicons name="calendar-outline" size={12} color={AdminColors.textMuted} />
+                      <Ionicons name="calendar-outline" size={scaleWidth(12)} color={AdminColors.textMuted} />
                       <Text style={styles.bookMetaText}>{formatDate(book.created_at)}</Text>
                     </View>
                   </View>
@@ -799,14 +616,14 @@ const handleSave = async () => {
                       style={[styles.bookActionButton, styles.editButton]}
                       onPress={() => openEditModal(book)}
                     >
-                      <Ionicons name="pencil-outline" size={14} color={AdminColors.info} />
+                      <Ionicons name="pencil-outline" size={scaleWidth(14)} color={AdminColors.info} />
                       <Text style={styles.bookActionText}>Өзгерту</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.bookActionButton, styles.deleteButton]}
                       onPress={() => handleDelete(book.id)}
                     >
-                      <Ionicons name="trash-outline" size={14} color={AdminColors.error} />
+                      <Ionicons name="trash-outline" size={scaleWidth(14)} color={AdminColors.error} />
                       <Text style={[styles.bookActionText, styles.deleteButtonText]}>Жою</Text>
                     </TouchableOpacity>
                   </View>
@@ -838,7 +655,7 @@ const handleSave = async () => {
                     <Image source={{ uri: book.cover_url }} style={styles.listItemCoverImage} />
                   ) : (
                     <View style={styles.listItemCoverPlaceholder}>
-                      <Ionicons name="book" size={20} color={AdminColors.primary} />
+                      <Ionicons name="book" size={scaleWidth(20)} color={AdminColors.primary} />
                     </View>
                   )}
                 </View>
@@ -854,7 +671,7 @@ const handleSave = async () => {
                     <View style={styles.listItemCategory}>
                       <Ionicons 
                         name={categories.find(c => c.id === book.category)?.icon as any || 'book'} 
-                        size={10} 
+                        size={scaleWidth(10)} 
                         color={AdminColors.info} 
                       />
                       <Text style={styles.listItemCategoryText}>
@@ -870,13 +687,13 @@ const handleSave = async () => {
                     style={styles.listItemAction}
                     onPress={() => openEditModal(book)}
                   >
-                    <Ionicons name="pencil-outline" size={16} color={AdminColors.info} />
+                    <Ionicons name="pencil-outline" size={scaleWidth(16)} color={AdminColors.info} />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.listItemAction}
                     onPress={() => handleDelete(book.id)}
                   >
-                    <Ionicons name="trash-outline" size={16} color={AdminColors.error} />
+                    <Ionicons name="trash-outline" size={scaleWidth(16)} color={AdminColors.error} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -886,7 +703,7 @@ const handleSave = async () => {
 
         {filteredBooks.length === 0 && (
           <View style={styles.emptyState}>
-            <Ionicons name="book-outline" size={64} color={AdminColors.textMuted} />
+            <Ionicons name="book-outline" size={scaleWidth(64)} color={AdminColors.textMuted} />
             <Text style={styles.emptyStateText}>Кітаптар табылмады</Text>
             <Text style={styles.emptyStateSubtext}>
               {searchQuery || selectedCategory 
@@ -905,13 +722,13 @@ const handleSave = async () => {
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { width: getModalWidth(), alignSelf: 'center' }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
                 {editingBook ? 'Кітапты өзгерту' : 'Жаңа кітап қосу'}
               </Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={24} color={AdminColors.textSecondary} />
+                <Ionicons name="close" size={scaleWidth(24)} color={AdminColors.textSecondary} />
               </TouchableOpacity>
             </View>
 
@@ -967,7 +784,7 @@ const handleSave = async () => {
                       >
                         <Ionicons 
                           name={cat.icon as any} 
-                          size={14} 
+                          size={scaleWidth(14)} 
                           color={formData.category === cat.id ? AdminColors.primary : AdminColors.textMuted} 
                         />
                         <Text style={[
@@ -998,7 +815,7 @@ const handleSave = async () => {
                 <View style={styles.formGroup}>
                   <Text style={styles.formLabel}>PDF файлы *</Text>
                   <TouchableOpacity style={styles.uploadButton} onPress={pickPdf}>
-                    <Ionicons name="cloud-upload-outline" size={32} color={AdminColors.primary} />
+                    <Ionicons name="cloud-upload-outline" size={scaleWidth(32)} color={AdminColors.primary} />
                     <Text style={styles.uploadButtonText}>
                       {selectedPdf ? selectedPdf.name : 'PDF файлын таңдаңыз'}
                     </Text>
@@ -1032,7 +849,7 @@ const handleSave = async () => {
                   <ActivityIndicator size="small" color={AdminColors.background} />
                 ) : (
                   <>
-                    <Ionicons name="checkmark" size={18} color={AdminColors.background} />
+                    <Ionicons name="checkmark" size={scaleWidth(18)} color={AdminColors.background} />
                     <Text style={styles.saveButtonText}>
                       {editingBook ? 'Сақтау' : 'Қосу'}
                     </Text>
@@ -1047,6 +864,8 @@ const handleSave = async () => {
   );
 }
 
+// app/admin/books.tsx (түзетілген стильдер бөлігі)
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -1056,98 +875,98 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     backgroundColor: AdminColors.surface,
     borderBottomWidth: 1,
     borderBottomColor: AdminColors.border,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: isMobile ? scaleFont(20) : scaleFont(24),
     fontWeight: '700',
     color: AdminColors.text,
   },
   headerSubtitle: {
-    fontSize: 13,
+    fontSize: scaleFont(13),
     color: AdminColors.textMuted,
-    marginTop: 2,
+    marginTop: scaleHeight(2),
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: spacing.sm,
   },
   viewToggle: {
     flexDirection: 'row',
     backgroundColor: AdminColors.surfaceHover,
-    borderRadius: 8,
-    padding: 2,
+    borderRadius: borderRadius.sm,
+    padding: scaleWidth(2),
   },
   viewToggleButton: {
-    padding: 8,
-    borderRadius: 6,
+    padding: scaleWidth(8),
+    borderRadius: borderRadius.sm,
   },
   viewToggleButtonActive: {
     backgroundColor: AdminColors.surface,
   },
   addButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: scaleWidth(48),
+    height: scaleWidth(48),
+    borderRadius: scaleWidth(24),
     backgroundColor: AdminColors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: AdminColors.primary,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: scaleHeight(4) },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowRadius: scaleWidth(8),
     elevation: 4,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: AdminColors.surface,
-    margin: 16,
-    marginTop: 12,
-    marginBottom: 8,
-    paddingHorizontal: 16,
-    paddingVertical: Platform.OS === 'ios' ? 14 : 10,
-    borderRadius: 12,
+    margin: spacing.md,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: Platform.OS === 'ios' ? scaleHeight(14) : scaleHeight(10),
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: AdminColors.border,
-    gap: 10,
+    gap: spacing.xs,
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: scaleFont(16),
     color: AdminColors.text,
     padding: 0,
   },
   categoriesContainer: {
-    maxHeight: 50,
-    marginBottom: 16,
+    maxHeight: scaleHeight(50),
+    marginBottom: spacing.sm,
   },
   categoriesContent: {
-    paddingHorizontal: 16,
-    gap: 8,
+    paddingHorizontal: spacing.md,
+    gap: spacing.xs,
   },
   categoryChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: scaleHeight(8),
     backgroundColor: AdminColors.surface,
-    borderRadius: 20,
+    borderRadius: borderRadius.xxl,
     borderWidth: 1,
     borderColor: AdminColors.border,
-    gap: 6,
+    gap: spacing.xxs,
   },
   categoryChipActive: {
     backgroundColor: AdminColors.primary,
     borderColor: AdminColors.primary,
   },
   categoryChipText: {
-    fontSize: 14,
+    fontSize: scaleFont(14),
     color: AdminColors.textSecondary,
     fontWeight: '500',
   },
@@ -1156,19 +975,20 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     flex: 1,
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.md,
   },
   booksGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 16,
-    paddingBottom: 20,
+    gap: getCardGap(),
+    paddingBottom: spacing.lg,
   },
   bookCard: {
-    width: isMobile ? '100%' : 'calc(33.33% - 11px)' as any,
-    minWidth: isMobile ? '100%' : 280,
+    // Түзетілген: calc() орнына flex негізінде
+    flex: isMobile ? 1 : (isTablet ? 0.5 : 0.33),
+    minWidth: isMobile ? '100%' : (isTablet ? scaleWidth(280) : scaleWidth(300)),
     backgroundColor: AdminColors.surface,
-    borderRadius: 16,
+    borderRadius: borderRadius.xl,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: AdminColors.border,
@@ -1176,15 +996,15 @@ const styles = StyleSheet.create({
   },
   statusToggle: {
     position: 'absolute',
-    top: 10,
-    right: 10,
+    top: spacing.sm,
+    right: spacing.sm,
     zIndex: 10,
-    padding: 4,
+    padding: spacing.xxs,
   },
   statusIndicator: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: scaleWidth(10),
+    height: scaleWidth(10),
+    borderRadius: scaleWidth(5),
   },
   statusActive: {
     backgroundColor: AdminColors.success,
@@ -1193,9 +1013,10 @@ const styles = StyleSheet.create({
     backgroundColor: AdminColors.textMuted,
   },
   bookCover: {
-    height: 200,
+    height: scaleHeight(200),
     backgroundColor: AdminColors.surfaceHover,
     position: 'relative',
+    overflow: 'hidden', // overflow: 'scroll' емес
   },
   bookCoverImage: {
     width: '100%',
@@ -1210,68 +1031,68 @@ const styles = StyleSheet.create({
   },
   bookCategoryBadge: {
     position: 'absolute',
-    bottom: 10,
-    left: 10,
+    bottom: spacing.sm,
+    left: spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: scaleHeight(4),
     backgroundColor: 'rgba(0,0,0,0.7)',
-    borderRadius: 6,
-    gap: 4,
+    borderRadius: borderRadius.sm,
+    gap: spacing.xxs,
   },
   bookCategoryText: {
-    fontSize: 10,
+    fontSize: scaleFont(10),
     color: AdminColors.text,
     fontWeight: '500',
   },
   bookInfo: {
-    padding: 16,
+    padding: spacing.md,
   },
   bookTitle: {
-    fontSize: 16,
+    fontSize: scaleFont(16),
     fontWeight: '600',
     color: AdminColors.text,
-    marginBottom: 4,
-    lineHeight: 22,
+    marginBottom: spacing.xxs,
+    lineHeight: scaleHeight(22),
   },
   bookInactive: {
     opacity: 0.5,
     textDecorationLine: 'line-through',
   },
   bookAuthor: {
-    fontSize: 13,
+    fontSize: scaleFont(13),
     color: AdminColors.textSecondary,
-    marginBottom: 12,
+    marginBottom: spacing.sm,
   },
   bookMeta: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 16,
+    gap: spacing.sm,
+    marginBottom: spacing.md,
   },
   bookMetaItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: spacing.xxs,
   },
   bookMetaText: {
-    fontSize: 11,
+    fontSize: scaleFont(11),
     color: AdminColors.textMuted,
   },
   bookActions: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
   },
   bookActionButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
-    borderRadius: 8,
-    gap: 4,
+    paddingVertical: scaleHeight(8),
+    borderRadius: borderRadius.sm,
+    gap: spacing.xxs,
   },
   editButton: {
     backgroundColor: `${AdminColors.info}15`,
@@ -1280,7 +1101,7 @@ const styles = StyleSheet.create({
     backgroundColor: `${AdminColors.error}15`,
   },
   bookActionText: {
-    fontSize: 12,
+    fontSize: scaleFont(12),
     fontWeight: '500',
     color: AdminColors.info,
   },
@@ -1293,34 +1114,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   bookSize: {
-    fontSize: 11,
+    fontSize: scaleFont(11),
     color: AdminColors.textMuted,
   },
   bookId: {
-    fontSize: 11,
+    fontSize: scaleFont(11),
     color: AdminColors.textMuted,
   },
   listView: {
-    gap: 8,
-    paddingBottom: 20,
+    gap: spacing.xs,
+    paddingBottom: spacing.lg,
   },
   listItem: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: AdminColors.surface,
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: borderRadius.lg,
+    padding: spacing.sm,
     borderWidth: 1,
     borderColor: AdminColors.border,
-    gap: 12,
+    gap: spacing.sm,
   },
   listItemStatus: {
-    padding: 4,
+    padding: spacing.xxs,
   },
   statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: scaleWidth(8),
+    height: scaleWidth(8),
+    borderRadius: scaleWidth(4),
   },
   statusDotActive: {
     backgroundColor: AdminColors.success,
@@ -1329,9 +1150,9 @@ const styles = StyleSheet.create({
     backgroundColor: AdminColors.textMuted,
   },
   listItemCover: {
-    width: 40,
-    height: 50,
-    borderRadius: 6,
+    width: scaleWidth(40),
+    height: scaleHeight(50),
+    borderRadius: borderRadius.sm,
     overflow: 'hidden',
   },
   listItemCoverImage: {
@@ -1349,47 +1170,47 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   listItemTitle: {
-    fontSize: 15,
+    fontSize: scaleFont(15),
     fontWeight: '600',
     color: AdminColors.text,
-    marginBottom: 2,
+    marginBottom: scaleHeight(2),
   },
   listItemSubtitle: {
-    fontSize: 12,
+    fontSize: scaleFont(12),
     color: AdminColors.textSecondary,
-    marginBottom: 4,
+    marginBottom: scaleHeight(4),
   },
   listItemMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.xs,
   },
   listItemCategory: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: `${AdminColors.info}15`,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    gap: 2,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: scaleHeight(2),
+    borderRadius: borderRadius.sm,
+    gap: spacing.xxs,
   },
   listItemCategoryText: {
-    fontSize: 9,
+    fontSize: scaleFont(9),
     color: AdminColors.info,
     fontWeight: '500',
   },
   listItemDate: {
-    fontSize: 9,
+    fontSize: scaleFont(9),
     color: AdminColors.textMuted,
   },
   listItemActions: {
     flexDirection: 'row',
-    gap: 8,
+    gap: spacing.xs,
   },
   listItemAction: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: scaleWidth(32),
+    height: scaleWidth(32),
+    borderRadius: borderRadius.sm,
     backgroundColor: AdminColors.surfaceHover,
     justifyContent: 'center',
     alignItems: 'center',
@@ -1397,105 +1218,110 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
+    paddingVertical: scaleHeight(60),
   },
   emptyStateText: {
-    fontSize: 18,
+    fontSize: scaleFont(18),
     fontWeight: '600',
     color: AdminColors.textSecondary,
-    marginTop: 16,
+    marginTop: spacing.md,
   },
   emptyStateSubtext: {
-    fontSize: 14,
+    fontSize: scaleFont(14),
     color: AdminColors.textMuted,
-    marginTop: 4,
+    marginTop: spacing.xxs,
+    textAlign: 'center',
+    paddingHorizontal: spacing.lg,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: AdminColors.background,
-    gap: 16,
+    gap: spacing.md,
   },
   loadingText: {
     color: AdminColors.textSecondary,
-    fontSize: 14,
+    fontSize: scaleFont(14),
   },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.9)',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalContent: {
     backgroundColor: AdminColors.surface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderRadius: borderRadius.xxl,
     borderWidth: 1,
     borderColor: AdminColors.border,
-    maxHeight: height * 0.9,
+    maxHeight: getModalMaxHeight(),
+    width: getModalWidth(),
+    alignSelf: 'center',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    padding: spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: AdminColors.border,
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: scaleFont(18),
     fontWeight: '600',
     color: AdminColors.text,
   },
   modalBody: {
-    padding: 20,
-    maxHeight: height * 0.6,
+    padding: spacing.lg,
+    maxHeight: height * 0.5,
   },
   formGroup: {
-    marginBottom: 20,
+    marginBottom: spacing.lg,
   },
   formLabel: {
-    fontSize: 14,
+    fontSize: scaleFont(14),
     fontWeight: '500',
     color: AdminColors.textSecondary,
-    marginBottom: 8,
+    marginBottom: spacing.xs,
   },
   formInput: {
     backgroundColor: AdminColors.background,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: scaleHeight(14),
+    fontSize: scaleFont(16),
     color: AdminColors.text,
     borderWidth: 1,
     borderColor: AdminColors.border,
   },
   formTextArea: {
-    minHeight: 100,
+    minHeight: scaleHeight(100),
     textAlignVertical: 'top',
   },
   categorySelect: {
     flexDirection: 'row',
-    gap: 8,
-    paddingVertical: 4,
+    gap: spacing.xs,
+    paddingVertical: scaleHeight(4),
+    flexWrap: 'wrap',
   },
   categoryOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: scaleHeight(8),
     backgroundColor: AdminColors.background,
-    borderRadius: 20,
+    borderRadius: borderRadius.xxl,
     borderWidth: 1,
     borderColor: AdminColors.border,
-    gap: 4,
+    gap: spacing.xxs,
   },
   categoryOptionActive: {
     backgroundColor: `${AdminColors.primary}20`,
     borderColor: AdminColors.primary,
   },
   categoryOptionText: {
-    fontSize: 13,
+    fontSize: scaleFont(13),
     color: AdminColors.textSecondary,
   },
   categoryOptionTextActive: {
@@ -1504,30 +1330,30 @@ const styles = StyleSheet.create({
   },
   uploadButton: {
     backgroundColor: AdminColors.background,
-    borderRadius: 12,
-    padding: 24,
+    borderRadius: borderRadius.lg,
+    padding: spacing.xl,
     alignItems: 'center',
     borderWidth: 2,
     borderColor: AdminColors.border,
     borderStyle: 'dashed',
-    gap: 8,
+    gap: spacing.xs,
   },
   uploadButtonText: {
-    fontSize: 14,
+    fontSize: scaleFont(14),
     color: AdminColors.primary,
     fontWeight: '500',
     textAlign: 'center',
   },
   uploadHint: {
-    fontSize: 12,
+    fontSize: scaleFont(12),
     color: AdminColors.textMuted,
   },
   progressContainer: {
-    height: 20,
+    height: scaleHeight(20),
     backgroundColor: AdminColors.background,
-    borderRadius: 10,
+    borderRadius: borderRadius.md,
     overflow: 'hidden',
-    marginTop: 8,
+    marginTop: spacing.xs,
     position: 'relative',
   },
   progressBar: {
@@ -1541,26 +1367,26 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     textAlign: 'center',
-    fontSize: 12,
+    fontSize: scaleFont(12),
     color: AdminColors.text,
-    lineHeight: 20,
+    lineHeight: scaleHeight(20),
   },
   modalFooter: {
     flexDirection: 'row',
-    gap: 12,
-    padding: 20,
+    gap: spacing.sm,
+    padding: spacing.lg,
     borderTopWidth: 1,
     borderTopColor: AdminColors.border,
   },
   cancelButton: {
     flex: 1,
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: scaleHeight(16),
+    borderRadius: borderRadius.lg,
     backgroundColor: AdminColors.surfaceHover,
     alignItems: 'center',
   },
   cancelButtonText: {
-    fontSize: 16,
+    fontSize: scaleFont(16),
     color: AdminColors.textSecondary,
     fontWeight: '500',
   },
@@ -1569,16 +1395,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
+    paddingVertical: scaleHeight(16),
     backgroundColor: AdminColors.primary,
-    borderRadius: 12,
-    gap: 8,
+    borderRadius: borderRadius.lg,
+    gap: spacing.xs,
   },
   saveButtonDisabled: {
     opacity: 0.5,
   },
   saveButtonText: {
-    fontSize: 16,
+    fontSize: scaleFont(16),
     color: AdminColors.background,
     fontWeight: '600',
   },

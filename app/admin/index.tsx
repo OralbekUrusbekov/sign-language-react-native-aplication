@@ -1,3 +1,4 @@
+// app/admin/index.tsx
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -11,26 +12,39 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { API_BASE_URL } from '@/config/api';
+import {
+  scaleWidth,
+  scaleHeight,
+  scaleFont,
+  spacing,
+  borderRadius,
+  isMobile,
+  isTablet,
+  isDesktop,
+  getContentPadding,
+  getCardGap,
+  getStatCardMinWidth,
+  responsiveFont,
+} from '@/constants/admin-responsive';
 
 const { width } = Dimensions.get('window');
-const isWeb = Platform.OS === 'web';
 
-// Admin Theme Colors
+// TYNDAU Admin Theme Colors
 const AdminColors = {
-  background: '#0a0a0a',
-  surface: '#141414',
-  surfaceHover: '#1a1a1a',
-  border: '#262626',
+  background: '#0D1F33',
+  surface: '#1E3A5F',
+  surfaceHover: '#2E5A8F',
+  border: '#2E5A8F',
   primary: '#4ECDC4',
-  primaryDark: '#3EBDB4',
-  secondary: '#1E3A5F',
+  primaryDark: '#2EAD9F',
+  secondary: '#6EE7DE',
   text: '#ffffff',
-  textSecondary: '#a1a1aa',
-  textMuted: '#71717a',
-  success: '#22c55e',
-  warning: '#f59e0b',
-  error: '#ef4444',
-  info: '#3b82f6',
+  textSecondary: '#CBD5E1',
+  textMuted: '#94A3B8',
+  success: '#10B981',
+  warning: '#F59E0B',
+  error: '#EF4444',
+  info: '#3B82F6',
 };
 
 interface StatCard {
@@ -50,14 +64,6 @@ interface CategoryStat {
   icon: string;
 }
 
-interface RecentActivity {
-  id: string;
-  type: 'word' | 'book' | 'user' | 'setting';
-  action: string;
-  item: string;
-  time: string;
-}
-
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -75,35 +81,31 @@ export default function AdminDashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      // Fetch word categories
-      const wordsRes = await fetch(`${API_BASE_URL}/api/words/categories`);
-      const wordsData = await wordsRes.json();
-      
-      // Fetch book categories
-      const booksRes = await fetch(`${API_BASE_URL}/api/books/categories`);
-      const booksData = await booksRes.json();
+      const [wordsRes, booksRes, wordCatsRes, bookCatsRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/words`),
+        fetch(`${API_BASE_URL}/api/books`),
+        fetch(`${API_BASE_URL}/api/words/categories`),
+        fetch(`${API_BASE_URL}/api/books/categories`),
+      ]);
 
-      // Fetch all words count
-      const allWordsRes = await fetch(`${API_BASE_URL}/api/words`);
-      const allWordsData = await allWordsRes.json();
+      const words = await wordsRes.json();
+      const books = await booksRes.json();
+      const wordCats = await wordCatsRes.json();
+      const bookCats = await bookCatsRes.json();
 
-      // Fetch all books
-      const allBooksRes = await fetch(`${API_BASE_URL}/api/books`);
-      const allBooksData = await allBooksRes.json();
+      const totalDownloads = books.reduce((sum: number, b: any) => sum + (b.download_count || 0), 0);
 
-      const totalDownloads = allBooksData.reduce((sum: number, book: any) => sum + (book.download_count || 0), 0);
-
-      setWordCategories(wordsData);
-      setBookCategories(booksData);
       setStats({
-        totalWords: allWordsData.length,
-        totalBooks: allBooksData.length,
-        totalCategories: wordsData.length + booksData.length,
-        totalDownloads: totalDownloads,
+        totalWords: words.length,
+        totalBooks: books.length,
+        totalCategories: wordCats.length + bookCats.length,
+        totalDownloads,
       });
+
+      setWordCategories(wordCats);
+      setBookCategories(bookCats);
     } catch (error) {
       console.log('Dashboard data fetch error:', error);
-      // Set default data for demo
       setStats({
         totalWords: 150,
         totalBooks: 25,
@@ -165,34 +167,6 @@ export default function AdminDashboard() {
     },
   ];
 
-  const recentActivities: RecentActivity[] = [
-    { id: '1', type: 'word', action: 'Жаңа сөз қосылды', item: 'Salam', time: '5 мин бұрын' },
-    { id: '2', type: 'book', action: 'Кітап жүктелді', item: 'Ым тілі негіздері', time: '15 мин бұрын' },
-    { id: '3', type: 'word', action: 'Сөз өзгертілді', item: 'Rahmet', time: '1 сағ бұрын' },
-    { id: '4', type: 'book', action: 'Жаңа кітап қосылды', item: 'Балаларға арналған', time: '2 сағ бұрын' },
-    { id: '5', type: 'setting', action: 'Баптау өзгертілді', item: 'API URL', time: '3 сағ бұрын' },
-  ];
-
-  const getActivityIcon = (type: string): keyof typeof Ionicons.glyphMap => {
-    switch (type) {
-      case 'word': return 'text-outline';
-      case 'book': return 'book-outline';
-      case 'user': return 'person-outline';
-      case 'setting': return 'settings-outline';
-      default: return 'ellipse-outline';
-    }
-  };
-
-  const getActivityColor = (type: string): string => {
-    switch (type) {
-      case 'word': return AdminColors.primary;
-      case 'book': return AdminColors.info;
-      case 'user': return AdminColors.success;
-      case 'setting': return AdminColors.warning;
-      default: return AdminColors.textMuted;
-    }
-  };
-
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -212,7 +186,7 @@ export default function AdminDashboard() {
             <Text style={styles.pageSubtitle}>Басты бет - Жалпы шолу</Text>
           </View>
           <TouchableOpacity style={styles.refreshButton} onPress={fetchDashboardData}>
-            <Ionicons name="refresh-outline" size={18} color={AdminColors.text} />
+            <Ionicons name="refresh-outline" size={scaleWidth(18)} color={AdminColors.text} />
             <Text style={styles.refreshText}>Жаңарту</Text>
           </TouchableOpacity>
         </View>
@@ -223,7 +197,7 @@ export default function AdminDashboard() {
             <View key={index} style={styles.statCard}>
               <View style={styles.statCardHeader}>
                 <View style={[styles.statIconContainer, { backgroundColor: `${card.color}15` }]}>
-                  <Ionicons name={card.icon} size={22} color={card.color} />
+                  <Ionicons name={card.icon} size={scaleWidth(22)} color={card.color} />
                 </View>
                 <View style={[
                   styles.changeBadge,
@@ -233,7 +207,7 @@ export default function AdminDashboard() {
                 ]}>
                   <Ionicons
                     name={card.changeType === 'positive' ? 'trending-up' : card.changeType === 'negative' ? 'trending-down' : 'remove'}
-                    size={12}
+                    size={scaleWidth(12)}
                     color={card.changeType === 'positive' ? AdminColors.success : card.changeType === 'negative' ? AdminColors.error : AdminColors.textMuted}
                   />
                   <Text style={[
@@ -258,7 +232,7 @@ export default function AdminDashboard() {
           <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <View style={styles.sectionTitleContainer}>
-                <Ionicons name="text-outline" size={20} color={AdminColors.primary} />
+                <Ionicons name="text-outline" size={scaleWidth(20)} color={AdminColors.primary} />
                 <Text style={styles.sectionTitle}>Сөз категориялары</Text>
               </View>
               <Text style={styles.sectionSubtitle}>Word Categories</Text>
@@ -290,7 +264,7 @@ export default function AdminDashboard() {
           <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <View style={styles.sectionTitleContainer}>
-                <Ionicons name="book-outline" size={20} color={AdminColors.info} />
+                <Ionicons name="book-outline" size={scaleWidth(20)} color={AdminColors.info} />
                 <Text style={styles.sectionTitle}>Кітап категориялары</Text>
               </View>
               <Text style={styles.sectionSubtitle}>Book Categories</Text>
@@ -318,9 +292,6 @@ export default function AdminDashboard() {
             </View>
           </View>
         </View>
-
-      
-       
       </View>
     </ScrollView>
   );
@@ -332,64 +303,66 @@ const styles = StyleSheet.create({
     backgroundColor: AdminColors.background,
   },
   content: {
-    padding: 24,
-    paddingBottom: 48,
+    padding: getContentPadding(),
+    paddingBottom: spacing.xxl,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: AdminColors.background,
-    gap: 16,
+    gap: spacing.md,
   },
   loadingText: {
     color: AdminColors.textSecondary,
-    fontSize: 14,
+    fontSize: scaleFont(14),
   },
   pageHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 24,
+    marginBottom: spacing.xl,
+    flexWrap: 'wrap',
+    gap: spacing.md,
   },
   pageTitle: {
-    fontSize: 28,
+    fontSize: isMobile ? scaleFont(24) : scaleFont(28),
     fontWeight: '700',
     color: AdminColors.text,
-    marginBottom: 4,
+    marginBottom: spacing.xxs,
   },
   pageSubtitle: {
-    fontSize: 14,
+    fontSize: scaleFont(14),
     color: AdminColors.textMuted,
   },
   refreshButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: spacing.md,
+    paddingVertical: scaleHeight(10),
     backgroundColor: AdminColors.surface,
-    borderRadius: 10,
+    borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: AdminColors.border,
-    gap: 8,
+    gap: spacing.xs,
   },
   refreshText: {
     color: AdminColors.text,
-    fontSize: 14,
+    fontSize: scaleFont(14),
     fontWeight: '500',
   },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 16,
-    marginBottom: 24,
+    gap: getCardGap(),
+    marginBottom: spacing.xl,
   },
   statCard: {
     flex: 1,
-    minWidth: isWeb ? 220 : width / 2 - 32,
+    minWidth: getStatCardMinWidth(),
     backgroundColor: AdminColors.surface,
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
     borderWidth: 1,
     borderColor: AdminColors.border,
   },
@@ -397,22 +370,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: spacing.md,
   },
   statIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: scaleWidth(44),
+    height: scaleWidth(44),
+    borderRadius: borderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
   },
   changeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    gap: 4,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: scaleHeight(4),
+    borderRadius: borderRadius.sm,
+    gap: spacing.xxs,
   },
   changeBadgePositive: {
     backgroundColor: 'rgba(34, 197, 94, 0.1)',
@@ -424,7 +397,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(113, 113, 122, 0.1)',
   },
   changeText: {
-    fontSize: 12,
+    fontSize: scaleFont(12),
     fontWeight: '600',
     color: AdminColors.textMuted,
   },
@@ -435,55 +408,55 @@ const styles = StyleSheet.create({
     color: AdminColors.error,
   },
   statValue: {
-    fontSize: 32,
+    fontSize: isMobile ? scaleFont(28) : scaleFont(32),
     fontWeight: '700',
     color: AdminColors.text,
-    marginBottom: 4,
+    marginBottom: spacing.xxs,
   },
   statLabel: {
-    fontSize: 14,
+    fontSize: scaleFont(14),
     color: AdminColors.textSecondary,
     fontWeight: '500',
   },
   statLabelEn: {
-    fontSize: 12,
+    fontSize: scaleFont(12),
     color: AdminColors.textMuted,
-    marginTop: 2,
+    marginTop: scaleHeight(2),
   },
   sectionGrid: {
-    flexDirection: isWeb ? 'row' : 'column',
-    gap: 16,
-    marginBottom: 24,
+    flexDirection: isMobile ? 'column' : 'row',
+    gap: getCardGap(),
+    marginBottom: spacing.xl,
   },
   sectionCard: {
     flex: 1,
     backgroundColor: AdminColors.surface,
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
     borderWidth: 1,
     borderColor: AdminColors.border,
   },
   sectionHeader: {
-    marginBottom: 20,
+    marginBottom: spacing.lg,
   },
   sectionTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: spacing.xs,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: scaleFont(16),
     fontWeight: '600',
     color: AdminColors.text,
   },
   sectionSubtitle: {
-    fontSize: 12,
+    fontSize: scaleFont(12),
     color: AdminColors.textMuted,
-    marginTop: 4,
-    marginLeft: 30,
+    marginTop: spacing.xxs,
+    marginLeft: scaleWidth(30),
   },
   categoryList: {
-    gap: 12,
+    gap: spacing.sm,
   },
   categoryItem: {
     flexDirection: 'row',
@@ -493,123 +466,39 @@ const styles = StyleSheet.create({
   categoryInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: spacing.xs,
   },
   categoryDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: scaleWidth(8),
+    height: scaleWidth(8),
+    borderRadius: scaleWidth(4),
   },
   categoryName: {
-    fontSize: 14,
+    fontSize: scaleFont(14),
     color: AdminColors.textSecondary,
   },
   categoryCountContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: spacing.sm,
   },
   categoryCount: {
-    fontSize: 14,
+    fontSize: scaleFont(14),
     fontWeight: '600',
     color: AdminColors.text,
-    width: 30,
+    width: scaleWidth(30),
     textAlign: 'right',
   },
   categoryBar: {
-    width: 80,
-    height: 6,
+    width: scaleWidth(80),
+    height: scaleHeight(6),
     backgroundColor: AdminColors.surfaceHover,
-    borderRadius: 3,
+    borderRadius: borderRadius.sm,
     overflow: 'hidden',
   },
   categoryBarFill: {
     height: '100%',
     backgroundColor: AdminColors.primary,
-    borderRadius: 3,
-  },
-  activityCard: {
-    backgroundColor: AdminColors.surface,
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: AdminColors.border,
-    marginBottom: 24,
-  },
-  activityList: {
-    gap: 0,
-  },
-  activityItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: AdminColors.border,
-    gap: 14,
-  },
-  activityIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  activityContent: {
-    flex: 1,
-  },
-  activityAction: {
-    fontSize: 14,
-    color: AdminColors.text,
-    fontWeight: '500',
-  },
-  activityItem2: {
-    fontSize: 12,
-    color: AdminColors.textMuted,
-    marginTop: 2,
-  },
-  activityTime: {
-    fontSize: 12,
-    color: AdminColors.textMuted,
-  },
-  quickActionsCard: {
-    backgroundColor: AdminColors.surface,
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: AdminColors.border,
-  },
-  quickActionsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: AdminColors.text,
-    marginBottom: 16,
-  },
-  quickActionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  quickAction: {
-    flex: 1,
-    minWidth: 140,
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: AdminColors.surfaceHover,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: AdminColors.border,
-    gap: 12,
-  },
-  quickActionIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  quickActionText: {
-    fontSize: 13,
-    color: AdminColors.textSecondary,
-    fontWeight: '500',
+    borderRadius: borderRadius.sm,
   },
 });

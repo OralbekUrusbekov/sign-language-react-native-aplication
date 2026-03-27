@@ -26,14 +26,13 @@ import {
 import Svg, { Circle, Line } from 'react-native-svg';
 import { predictFrame, toggleRecognition } from '@/services/reqognition';
 
-
 const { width } = Dimensions.get('window');
 const CAMERA_HEIGHT = width * 0.75;
 const overlayWidth = width - 32;
 const cameraActualWidth = CAMERA_HEIGHT * (3 / 4);
 const xOffset = (overlayWidth - cameraActualWidth) / 2;
 
-// ==================== ЛОГТАР ====================
+// ==================== DEBUG LOGGING ====================
 const DEBUG = true;
 const log = (...args: any[]) => {
   if (DEBUG) {
@@ -50,23 +49,22 @@ interface Prediction {
 }
 
 export default function SignLanguageScreen() {
-  log('📱 Компонент жүктелді');
+  log('📱 Component mounted');
 
   const { appLanguage } = useSettings();
   const { t } = useSignTranslation();
-  
+
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState<CameraType>('front');
   const [isRunning, setIsRunning] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [currentPrediction, setCurrentPrediction] = useState<string>('Дайын');
+  const [currentPrediction, setCurrentPrediction] = useState<string>('Ready');
   const [top3Predictions, setTop3Predictions] = useState<Prediction[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [history, setHistory] = useState<string[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [fps, setFps] = useState(0);
-  const [frameCount, setFrameCount] = useState(0);
   const [landmarks, setLandmarks] = useState<any>(null);
   const [bufferStatus, setBufferStatus] = useState<{ frames: number; needed: number } | null>(null);
   const [landmarksDetected, setLandmarksDetected] = useState({ pose: false, hands: false });
@@ -78,7 +76,7 @@ export default function SignLanguageScreen() {
   const isRunningRef = useRef(false);
   const isProcessingRef = useRef(false);
 
-  // ==================== САУЫТ КОННЕКЦИЯЛАРЫ ====================
+  // ==================== POSE & HAND CONNECTIONS ====================
   const poseConnections = [
     [11, 12], // shoulders
     [11, 13], [13, 15], // left arm
@@ -97,14 +95,13 @@ export default function SignLanguageScreen() {
     [0,17],[17,18],[18,19],[19,20] // pinky
   ];
   
-  // ==================== БАЙЛАНЫСТЫ ТЕКСЕРУ ====================
-  
+  // ==================== CHECK CONNECTION ====================
   const checkConnection = useCallback(async () => {
-    log('🌐 Серверге қосылу тексерілуде...');
+    log('🌐 Checking server connection...');
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
-        logWarn('⏱️ Серверге қосылу уақыты өтті');
+        logWarn('⏱️ Connection timeout');
         controller.abort();
       }, 5000);
       
@@ -118,71 +115,106 @@ export default function SignLanguageScreen() {
       
       if (response.ok) {
         const data = await response.json();
-        logSuccess('✅ Серверге қосылды', data);
+        logSuccess('✅ Connected to server', data);
         setIsConnected(true);
         setConnectionError(null);
       } else {
-        logError('❌ Сервер қатесі:', response.status);
+        logError('❌ Server error:', response.status);
         throw new Error('Server error');
       }
     } catch (error) {
-      logError('❌ Серверге қосылу мүмкін емес:', error);
+      logError('❌ Cannot connect to server:', error);
       setIsConnected(false);
-      setConnectionError('Серверге қосылу мүмкін емес. IP адресті тексеріңіз.');
+      setConnectionError('Cannot connect to server. Check IP address.');
     }
   }, []);
 
   useEffect(() => {
-    log('🔄 useEffect - бастапқы тексеру');
+    log('🔄 Initial connection check');
     checkConnection();
     const connectionInterval = setInterval(() => {
-      log('🔄 Серверді қайта тексеру');
+      log('🔄 Rechecking server connection');
       checkConnection();
     }, 10000);
     
     return () => {
-      log('🧹 Компонент жойылды - тазалау');
+      log('🧹 Cleaning up');
       clearInterval(connectionInterval);
       stopFrameCapture();
     };
   }, [checkConnection]);
 
-  // ==================== КАДРЛАРДЫ ЖІБЕРУ (15 FPS) ====================
-
+  // ==================== CAPTURE AND SEND FRAME ====================
   const captureAndSendFrame = useCallback(async () => {
-    if (!cameraRef.current) return;
-    if (!isRunningRef.current) return;
-    if (isProcessingRef.current) return;
+    if (!cameraRef.current) {
+      logWarn('⚠️ Camera ref is null');
+      return;
+    }
+    if (!isRunningRef.current) {
+      logWarn('⚠️ Not running');
+      return;
+    }
+    if (isProcessingRef.current) {
+      logWarn('⚠️ Already processing');
+      return;
+    }
 
     isProcessingRef.current = true;
     setIsProcessing(true);
 
     try {
-      // Жоғары сапалы фото (жақсы landmark detection үшін)
+      // Take photo with HIGH QUALITY for better landmark detection
       const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.8,  // Жоғары сапа (0.8)
+        quality: 0.9,  // High quality for better hand detection
         base64: false,
         skipProcessing: false,
         shutterSound: false,
         imageType: 'jpg',
+        exif: false,
+        scale: 1.0,
       });
 
       if (!photo?.uri) {
-        logWarn('⚠️ Фото URI жоқ');
+        logWarn('⚠️ No photo URI');
         return;
       }
 
-      log(`📸 Кадр жіберілуде: ${new Date().toISOString().slice(11, 23)}`);
+      log(`📸 Sending frame at ${new Date().toISOString().slice(11, 23)}`);
       
       const startTime = Date.now();
-      const data = await predictFrame(photo.uri);
-      const latency = Date.now() - startTime;
       
-      log(`📊 Жауап уақыты: ${latency}ms`);
+      // Create form data
+      const formData = new FormData();
+      formData.append('frame', {
+        uri: photo.uri,
+        type: 'image/jpeg',
+        name: `frame_${Date.now()}.jpg`,
+      } as any);
+      
+      const response = await fetch(API_ENDPOINTS.PREDICT_FRAME, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Accept': 'application/json',
+          // Let fetch set Content-Type automatically for FormData
+        },
+      });
+      
+      const latency = Date.now() - startTime;
+      log(`📊 Response time: ${latency}ms`);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        logError('❌ HTTP error:', response.status, errorText);
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      log('📥 Response data:', data.status, data.current_prediction);
 
       if (!isRunningRef.current) return;
 
-      // Buffer статусын жаңарту
+      // Update buffer status
       if (data.buffer_status) {
         setBufferStatus({
           frames: data.buffer_status.frames || 0,
@@ -191,9 +223,16 @@ export default function SignLanguageScreen() {
         log(`📊 Buffer: ${data.buffer_status.frames}/${data.buffer_status.needed || 15}`);
       }
 
-      // Landmark detection статусы
+      // Update landmark detection status
       if (data.landmarks_detected) {
         setLandmarksDetected(data.landmarks_detected);
+        
+        // Debug hand detection
+        if (data.landmarks) {
+          const hand0Count = data.landmarks.hand_0?.filter((p: any) => p.x !== 0 || p.y !== 0 || p.z !== 0).length || 0;
+          const hand1Count = data.landmarks.hand_1?.filter((p: any) => p.x !== 0 || p.y !== 0 || p.z !== 0).length || 0;
+          log(`🖐️ Hand 0: ${hand0Count}/21 points, Hand 1: ${hand1Count}/21 points`);
+        }
       }
 
       if (data.status === 'success' && data.current_prediction) {
@@ -201,13 +240,13 @@ export default function SignLanguageScreen() {
         setTop3Predictions(data.top3 || []);
         setLandmarks(data.landmarks ?? null);
         
-        // Историяға қосу (бірдей сөзді қайталамау)
+        // Add to history (avoid duplicates)
         if (data.current_prediction !== lastPredictionRef.current) {
           setHistory(prev => [data.current_prediction!, ...prev.slice(0, 9)]);
           lastPredictionRef.current = data.current_prediction;
         }
         
-        // FPS есептеу
+        // Calculate FPS
         const now = Date.now();
         const elapsed = now - fpsTimerRef.current;
         const currentFps = Math.round(1000 / elapsed);
@@ -215,43 +254,42 @@ export default function SignLanguageScreen() {
         fpsTimerRef.current = now;
         
       } else if (data.status === 'waiting') {
-        setCurrentPrediction(data.message || 'Кадрлар жиналуда...');
+        setCurrentPrediction(data.message || 'Collecting frames...');
         setLandmarks(data.landmarks ?? null);
         
-        // Егер pose немесе hands табылмаса, көрсету
+        // Show specific messages if landmarks not detected
         if (data.landmarks_detected && !data.landmarks_detected.pose) {
-          setCurrentPrediction('❗ Поза табылмады');
+          setCurrentPrediction('❗ No pose detected');
         } else if (data.landmarks_detected && !data.landmarks_detected.hands) {
-          setCurrentPrediction('✋ Қол табылмады');
+          setCurrentPrediction('✋ No hands detected');
         }
       } else if (data.status === 'error') {
         logError('❌ Prediction error:', data.message);
-        setCurrentPrediction('Қате');
+        setCurrentPrediction('Error');
       }
 
-    } catch (e) {
-      logError('❌ FRAME ERROR:', e);
+    } catch (e: any) {
+      logError('❌ FRAME ERROR:', e.message);
     } finally {
       isProcessingRef.current = false;
       setIsProcessing(false);
     }
   }, []);
 
-  // ==================== КАДРЛАРДЫ ЖИНАУ ЛУПАСЫ (15 FPS = 66ms) ====================
-  
+  // ==================== FRAME CAPTURE LOOP ====================
   const startFrameCapture = useCallback(() => {
     if (frameIntervalRef.current) {
       clearInterval(frameIntervalRef.current);
     }
 
-    log('🚀 Кадр жинау басталды (15 FPS, 66ms интервал)');
+    log('🚀 Starting frame capture (15 FPS, 66ms interval)');
     
     // 66ms = ~15 FPS
     frameIntervalRef.current = setInterval(() => {
       if (isRunningRef.current && !isProcessingRef.current) {
         captureAndSendFrame();
       }
-    }, 66);  // FIXED: 80ms → 66ms (15 FPS)
+    }, 66);
   }, [captureAndSendFrame]);
 
   const stopFrameCapture = useCallback(() => {
@@ -261,25 +299,25 @@ export default function SignLanguageScreen() {
     }
     isProcessingRef.current = false;
     setIsProcessing(false);
-    setCurrentPrediction('Тоқтатылды');
+    setCurrentPrediction('Stopped');
     setBufferStatus(null);
     setLandmarksDetected({ pose: false, hands: false });
-    log('🛑 Кадр жинау тоқтатылды');
+    setLandmarks(null);
+    log('🛑 Frame capture stopped');
   }, []);
 
-  // ==================== ТАНУДЫ БАСҚАРУ ====================
-  
+  // ==================== TOGGLE RECOGNITION ====================
   const toggleRecognitionHandler = async () => {
-    log('🎮 toggleRecognitionHandler шақырылды');
+    log('🎮 Toggle recognition called');
     
     if (!isConnected) {
-      Alert.alert('Қате', 'Серверге қосылмаған');
+      Alert.alert('Error', 'Not connected to server');
       return;
     }
     
     try {
       const action = isRunning ? 'stop' : 'start';
-      log(`▶️ ${action} әрекеті`);
+      log(`▶️ Action: ${action}`);
       
       const result = await toggleRecognition(action);
       
@@ -288,54 +326,50 @@ export default function SignLanguageScreen() {
           setIsRunning(true);
           isRunningRef.current = true;  
           startFrameCapture();
-          setCurrentPrediction('Кадрлар жиналуда...');
+          setCurrentPrediction('Collecting frames...');
           setBufferStatus(null);
-          logSuccess('✅ Басталды, isRunning = true');
+          logSuccess('✅ Started');
         } else {
           stopFrameCapture();
           setIsRunning(false);
           isRunningRef.current = false; 
-          logSuccess('✅ Тоқтатылды, isRunning = false');
+          logSuccess('✅ Stopped');
         }
       } else {
-        Alert.alert('Қате', result.message || 'Әрекет сәтсіз аяқталды');
+        Alert.alert('Error', result.message || 'Action failed');
       }
     } catch (error) {
-      logError('❌ Қате:', error);
-      Alert.alert('Қате', 'Сервермен байланыс қатесі');
+      logError('❌ Error:', error);
+      Alert.alert('Error', 'Server communication error');
     }
   };
 
-  // ==================== ТЕСТ ФУНКЦИЯЛАРЫ ====================
-  
+  // ==================== TEST FUNCTIONS ====================
   const testCapture = async () => {
-    log('🧪 ТЕСТ: captureAndSendFrame тікелей шақыру');
-    Alert.alert('Тест', 'Кадр жіберілуде...');
+    log('🧪 TEST: Manual capture');
+    Alert.alert('Test', 'Sending frame...');
     await captureAndSendFrame();
   };
 
   const testConnection = async () => {
-    log('🧪 ТЕСТ: Серверді тексеру');
+    log('🧪 TEST: Checking server');
     await checkConnection();
   };
 
-  // ==================== КАМЕРАНЫ АУЫСТЫРУ ====================
-  
+  // ==================== TOGGLE CAMERA ====================
   const toggleCameraFacing = () => {
-    log('🔄 Камера ауыстырылды:', facing === 'back' ? 'front' : 'back');
+    log('🔄 Toggle camera:', facing === 'back' ? 'front' : 'back');
     setFacing(current => (current === 'back' ? 'front' : 'back'));
   };
 
-  // ==================== ИСТОРИЯНЫ ТАЗАЛАУ ====================
-  
+  // ==================== CLEAR HISTORY ====================
   const clearHistory = () => {
-    log('🗑️ История тазаланды');
+    log('🗑️ History cleared');
     setHistory([]);
     lastPredictionRef.current = '';
   };
 
   // ==================== PULL-TO-REFRESH ====================
-  
   const onRefresh = useCallback(async () => {
     log('🔄 Pull-to-refresh');
     setRefreshing(true);
@@ -343,28 +377,7 @@ export default function SignLanguageScreen() {
     setRefreshing(false);
   }, [checkConnection]);
 
-  // ==================== КОМПОНЕНТТІ ТАЗАЛАУ ====================
-  
-  useEffect(() => {
-    log('🔄 useEffect - компонент жүктелді');
-    return () => {
-      log('🧹 useEffect - компонент жойылды');
-      stopFrameCapture();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isRunning) {
-      setCurrentPrediction(t('ready'));
-    } else if (currentPrediction === t('stopped')) {
-      setCurrentPrediction(t('stopped'));
-    } else if (currentPrediction === t('collecting')) {
-      setCurrentPrediction(t('collecting'));
-    }
-  }, [appLanguage, isRunning]);
-
-  // ==================== ЛАНДМАРКТЫ САЛУ ====================
-  
+  // ==================== RENDER LANDMARKS ====================
   const renderLandmarks = () => {
     if (!landmarks) return null;
     
@@ -377,6 +390,8 @@ export default function SignLanguageScreen() {
           const p1 = landmarks?.pose?.[start];
           const p2 = landmarks?.pose?.[end];
           if (!p1 || !p2) return null;
+          // Check if points have valid coordinates
+          if (p1.x === 0 && p1.y === 0 && p2.x === 0 && p2.y === 0) return null;
           return (
             <Line
               key={`pose-line-${index}`}
@@ -394,6 +409,7 @@ export default function SignLanguageScreen() {
         {[11,12,13,14,15,16,23,24,25,26,27,28].map((index) => {
           const point = landmarks?.pose?.[index];
           if (!point) return null;
+          if (point.x === 0 && point.y === 0) return null;
           return (
             <Circle
               key={`pose-${index}`}
@@ -405,13 +421,33 @@ export default function SignLanguageScreen() {
           );
         })}
 
-        {/* Hand 0 (left or right) */}
-        {landmarks?.hand_0?.map((point: any, idx: number) => {
-          if (idx === 0) {
-            // Wrist marker
+        {/* Hand 0 lines */}
+        {handConnections.map(([start, end], index) => {
+          const p1 = landmarks?.hand_0?.[start];
+          const p2 = landmarks?.hand_0?.[end];
+          if (!p1 || !p2) return null;
+          if (p1.x === 0 && p1.y === 0 && p2.x === 0 && p2.y === 0) return null;
+          return (
+            <Line
+              key={`hand0-line-${index}`}
+              x1={xOffset + (1 - p1.x) * cameraActualWidth}
+              y1={p1.y * CAMERA_HEIGHT}
+              x2={xOffset + (1 - p2.x) * cameraActualWidth}
+              y2={p2.y * CAMERA_HEIGHT}
+              stroke={hand0IsLeft ? '#FFD700' : '#00CED1'}
+              strokeWidth="2.5"
+            />
+          );
+        })}
+
+        {/* Hand 0 points */}
+        {landmarks?.hand_0?.map((point: any, index: number) => {
+          if (point.x === 0 && point.y === 0) return null;
+          // Highlight wrist (index 0)
+          if (index === 0) {
             return (
               <Circle
-                key={`hand0-wrist`}
+                key={`hand0-wrist-${index}`}
                 cx={xOffset + (1 - point.x) * cameraActualWidth}
                 cy={point.y * CAMERA_HEIGHT}
                 r="6"
@@ -421,49 +457,29 @@ export default function SignLanguageScreen() {
               />
             );
           }
-          return null;
-        })}
-        
-        {/* Hand 0 lines */}
-        {handConnections.map(([start, end], index) => {
-          const p1 = landmarks?.hand_0?.[start];
-          const p2 = landmarks?.hand_0?.[end];
-          if (!p1 || !p2) return null;
           return (
-            <Line
-              key={`hand0-line-${index}`}
-              x1={xOffset + (1 - p1.x) * cameraActualWidth}
-              x2={xOffset + (1 - p2.x) * cameraActualWidth}
-              y1={p1.y * CAMERA_HEIGHT}
-              y2={p2.y * CAMERA_HEIGHT}
-              stroke={hand0IsLeft ? '#FFD700' : '#00CED1'}
-              strokeWidth="2.5"
+            <Circle
+              key={`hand0-point-${index}`}
+              cx={xOffset + (1 - point.x) * cameraActualWidth}
+              cy={point.y * CAMERA_HEIGHT}
+              r="3"
+              fill={hand0IsLeft ? '#FFD700' : '#00CED1'}
             />
           );
         })}
-
-        {/* Hand 0 points */}
-        {landmarks?.hand_0?.map((point: any, index: number) => (
-          <Circle
-            key={`hand0-point-${index}`}
-            cx={xOffset + (1 - point.x) * cameraActualWidth}
-            cy={point.y * CAMERA_HEIGHT}
-            r="3"
-            fill={hand0IsLeft ? '#FFD700' : '#00CED1'}
-          />
-        ))}
 
         {/* Hand 1 lines */}
         {handConnections.map(([start, end], index) => {
           const p1 = landmarks?.hand_1?.[start];
           const p2 = landmarks?.hand_1?.[end];
           if (!p1 || !p2) return null;
+          if (p1.x === 0 && p1.y === 0 && p2.x === 0 && p2.y === 0) return null;
           return (
             <Line
               key={`hand1-line-${index}`}
               x1={xOffset + (1 - p1.x) * cameraActualWidth}
-              x2={xOffset + (1 - p2.x) * cameraActualWidth}
               y1={p1.y * CAMERA_HEIGHT}
+              x2={xOffset + (1 - p2.x) * cameraActualWidth}
               y2={p2.y * CAMERA_HEIGHT}
               stroke={hand0IsLeft ? '#00CED1' : '#FFD700'}
               strokeWidth="2.5"
@@ -472,25 +488,40 @@ export default function SignLanguageScreen() {
         })}
 
         {/* Hand 1 points */}
-        {landmarks?.hand_1?.map((point: any, index: number) => (
-          <Circle
-            key={`hand1-point-${index}`}
-            cx={xOffset + (1 - point.x) * cameraActualWidth}
-            cy={point.y * CAMERA_HEIGHT}
-            r="3"
-            fill={hand0IsLeft ? '#00CED1' : '#FFD700'}
-          />
-        ))}
+        {landmarks?.hand_1?.map((point: any, index: number) => {
+          if (point.x === 0 && point.y === 0) return null;
+          if (index === 0) {
+            return (
+              <Circle
+                key={`hand1-wrist-${index}`}
+                cx={xOffset + (1 - point.x) * cameraActualWidth}
+                cy={point.y * CAMERA_HEIGHT}
+                r="6"
+                fill={hand0IsLeft ? '#00CED1' : '#FFD700'}
+                stroke="white"
+                strokeWidth="2"
+              />
+            );
+          }
+          return (
+            <Circle
+              key={`hand1-point-${index}`}
+              cx={xOffset + (1 - point.x) * cameraActualWidth}
+              cy={point.y * CAMERA_HEIGHT}
+              r="3"
+              fill={hand0IsLeft ? '#00CED1' : '#FFD700'}
+            />
+          );
+        })}
       </Svg>
     );
   };
 
-  // ==================== РЕНДЕР ====================
-  
-  log('🎨 Рендер:', { isConnected, isRunning, isProcessing, currentPrediction });
+  // ==================== RENDER ====================
+  log('🎨 Render:', { isConnected, isRunning, isProcessing, currentPrediction });
   
   if (!permission) {
-    log('⏳ Камера рұқсаты күтілуде...');
+    log('⏳ Waiting for camera permission...');
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color={Colors.primary} />
@@ -499,7 +530,7 @@ export default function SignLanguageScreen() {
   }
 
   if (!permission.granted) {
-    logWarn('⚠️ Камера рұқсаты жоқ');
+    logWarn('⚠️ Camera permission not granted');
     return (
       <View style={styles.permissionContainer}>
         <View style={styles.permissionCard}>
@@ -581,7 +612,7 @@ export default function SignLanguageScreen() {
               pictureSize="640x480"
             />
 
-            {/* Камераны ауыстыру батырмасы */}
+            {/* Flip camera button */}
             <TouchableOpacity style={styles.flipButton} onPress={toggleCameraFacing}>
               <Ionicons 
                 name="camera-reverse-outline" 
@@ -590,7 +621,7 @@ export default function SignLanguageScreen() {
               />
             </TouchableOpacity>
 
-            {/* Өңдеу индикаторы */}
+            {/* Processing indicator */}
             {isProcessing && (
               <View style={styles.processingIndicator}>
                 <ActivityIndicator size="small" color={Colors.white} />
@@ -609,12 +640,12 @@ export default function SignLanguageScreen() {
                   styles.detectionDot,
                   { backgroundColor: landmarksDetected.pose ? Colors.success : Colors.gray500 }
                 ]} />
-                <Text style={styles.detectionText}>Поза</Text>
+                <Text style={styles.detectionText}>Pose</Text>
                 <View style={[
                   styles.detectionDot,
                   { backgroundColor: landmarksDetected.hands ? Colors.success : Colors.gray500, marginLeft: 8 }
                 ]} />
-                <Text style={styles.detectionText}>Қол</Text>
+                <Text style={styles.detectionText}>Hands</Text>
               </View>
             )}
           </View>
@@ -640,7 +671,7 @@ export default function SignLanguageScreen() {
               </Text>
             </TouchableOpacity>
             
-            {/* ТЕСТ БАТЫРМАЛАРЫ (DEBUG үшін) */}
+            {/* Test buttons for debugging */}
             {__DEV__ && (
               <View style={styles.testButtons}>
                 <TouchableOpacity
@@ -673,15 +704,15 @@ export default function SignLanguageScreen() {
             <Text style={styles.currentPredictionLabel}>{t('currentWord')}</Text>
             <View style={[
               styles.currentPredictionBox,
-              currentPrediction === t('collecting') && styles.waitingBox,
-              currentPrediction === t('stopped') && styles.stoppedBox,
+              currentPrediction === 'Collecting frames...' && styles.waitingBox,
+              currentPrediction === 'Stopped' && styles.stoppedBox,
               currentPrediction?.startsWith('❗') && styles.warningBox,
               currentPrediction?.startsWith('✋') && styles.warningBox,
             ]}>
               <Text style={[
                 styles.currentPredictionText,
-                currentPrediction === t('collecting') && styles.waitingText,
-                currentPrediction === t('stopped') && styles.stoppedText,
+                currentPrediction === 'Collecting frames...' && styles.waitingText,
+                currentPrediction === 'Stopped' && styles.stoppedText,
                 currentPrediction?.startsWith('❗') && styles.warningText,
                 currentPrediction?.startsWith('✋') && styles.warningText,
               ]}>
@@ -769,7 +800,6 @@ export default function SignLanguageScreen() {
   );
 }
 
-// ==================== СТИЛЬДЕР (өзгеріссіз қалады) ====================
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -777,16 +807,18 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.md,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
     backgroundColor: Colors.primary,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
   headerTitle: {
-    fontSize: Typography.fontSizes.lg,
-    fontWeight: Typography.fontWeights.bold,
+    fontSize: 20,
+    fontWeight: 'bold',
     color: Colors.white,
     flex: 1,
   },
@@ -798,134 +830,138 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    marginRight: Spacing.xs,
+    marginRight: 6,
   },
   connectionText: {
-    fontSize: Typography.fontSizes.sm,
+    fontSize: 12,
     color: Colors.white,
   },
   errorBanner: {
     backgroundColor: Colors.error,
-    padding: Spacing.md,
+    padding: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   errorText: {
     color: Colors.white,
-    fontSize: Typography.fontSizes.sm,
+    fontSize: 12,
     flex: 1,
   },
   retryButton: {
     backgroundColor: Colors.white,
-    paddingVertical: Spacing.xs,
-    paddingHorizontal: Spacing.md,
-    borderRadius: BorderRadius.md,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
   },
   retryButtonText: {
     color: Colors.error,
-    fontWeight: Typography.fontWeights.semibold,
-    fontSize: Typography.fontSizes.sm,
+    fontWeight: '600',
+    fontSize: 12,
   },
   content: {
     flex: 1,
-    padding: Spacing.md,
+    padding: 16,
   },
   permissionContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: Colors.background,
-    padding: Spacing.lg,
+    padding: 20,
   },
   permissionCard: {
     backgroundColor: Colors.white,
-    borderRadius: BorderRadius.xl,
-    padding: Spacing.xl,
+    borderRadius: 20,
+    padding: 32,
     alignItems: 'center',
     ...Shadows.lg,
   },
   permissionTitle: {
-    fontSize: Typography.fontSizes.xl,
-    fontWeight: Typography.fontWeights.bold,
+    fontSize: 20,
+    fontWeight: 'bold',
     color: Colors.textPrimary,
-    marginTop: Spacing.lg,
+    marginTop: 16,
   },
   permissionText: {
-    fontSize: Typography.fontSizes.md,
+    fontSize: 14,
     color: Colors.textSecondary,
     textAlign: 'center',
-    marginTop: Spacing.sm,
-    marginBottom: Spacing.lg,
+    marginTop: 8,
+    marginBottom: 20,
   },
   permissionButton: {
     backgroundColor: Colors.primary,
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.xl,
-    borderRadius: BorderRadius.lg,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
   },
   permissionButtonText: {
-    fontSize: Typography.fontSizes.md,
-    fontWeight: Typography.fontWeights.semibold,
+    fontSize: 14,
+    fontWeight: '600',
     color: Colors.white,
   },
   cameraCard: {
-    backgroundColor: Colors.white,
-    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 20,
     overflow: 'hidden',
-    marginBottom: Spacing.md,
-    ...Shadows.md,
+    marginBottom: 16,
+    ...Shadows.lg,
+    borderWidth: 1,
+    borderColor: Colors.gray200,
   },
   cameraCardHeader: {
-    padding: Spacing.md,
+    padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: Colors.gray200,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
   },
   cameraCardTitle: {
-    fontSize: Typography.fontSizes.md,
-    fontWeight: Typography.fontWeights.semibold,
+    fontSize: 14,
+    fontWeight: '600',
     color: Colors.textPrimary,
   },
   headerButtons: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
+    gap: 8,
   },
   fpsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.primary + '20',
-    paddingHorizontal: Spacing.sm,
+    paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: BorderRadius.sm,
+    borderRadius: 6,
   },
   fpsText: {
-    fontSize: Typography.fontSizes.sm,
+    fontSize: 11,
     color: Colors.primary,
     marginLeft: 4,
-    fontWeight: Typography.fontWeights.medium,
+    fontWeight: '500',
   },
   bufferContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.primary + '20',
-    paddingHorizontal: Spacing.sm,
+    paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: BorderRadius.sm,
+    borderRadius: 6,
   },
   bufferText: {
-    fontSize: Typography.fontSizes.xs,
+    fontSize: 11,
     color: Colors.primary,
     marginLeft: 4,
-    fontWeight: Typography.fontWeights.medium,
+    fontWeight: '500',
   },
   testButton: {
     padding: 6,
     backgroundColor: Colors.primary + '20',
-    borderRadius: BorderRadius.full,
+    borderRadius: 20,
   },
   cameraContainer: {
     height: CAMERA_HEIGHT,
@@ -939,8 +975,8 @@ const styles = StyleSheet.create({
   },
   flipButton: {
     position: 'absolute',
-    top: Spacing.md,
-    right: Spacing.md,
+    top: 12,
+    right: 12,
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -950,22 +986,22 @@ const styles = StyleSheet.create({
   },
   processingIndicator: {
     position: 'absolute',
-    bottom: Spacing.md,
-    right: Spacing.md,
+    bottom: 12,
+    right: 12,
     backgroundColor: 'rgba(0,0,0,0.6)',
-    padding: Spacing.sm,
-    borderRadius: BorderRadius.full,
+    padding: 8,
+    borderRadius: 20,
   },
   detectionStatus: {
     position: 'absolute',
-    bottom: Spacing.md,
-    left: Spacing.md,
+    bottom: 12,
+    left: 12,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.6)',
     paddingVertical: 4,
-    paddingHorizontal: Spacing.sm,
-    borderRadius: BorderRadius.full,
+    paddingHorizontal: 8,
+    borderRadius: 16,
   },
   detectionDot: {
     width: 8,
@@ -975,81 +1011,83 @@ const styles = StyleSheet.create({
   },
   detectionText: {
     color: Colors.white,
-    fontSize: Typography.fontSizes.xs,
+    fontSize: 10,
     marginRight: 4,
   },
   controlButtons: {
-    padding: Spacing.md,
+    padding: 16,
   },
   mainButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    gap: Spacing.sm,
+    padding: 14,
+    borderRadius: 12,
+    gap: 8,
   },
   startButton: {
-    backgroundColor: Colors.success,
+    backgroundColor: Colors.secondary,
   },
   stopButton: {
-    backgroundColor: Colors.error,
+    backgroundColor: Colors.accent,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   mainButtonText: {
     color: Colors.white,
-    fontSize: Typography.fontSizes.md,
-    fontWeight: Typography.fontWeights.semibold,
+    fontSize: 16,
+    fontWeight: '600',
   },
   testButtons: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginTop: Spacing.sm,
-    gap: Spacing.sm,
+    marginTop: 12,
+    gap: 12,
   },
   testSmallButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: Spacing.sm,
-    borderRadius: BorderRadius.md,
-    gap: Spacing.xs,
+    padding: 10,
+    borderRadius: 10,
+    gap: 6,
   },
   testButtonText: {
     color: Colors.white,
-    fontSize: Typography.fontSizes.sm,
-    fontWeight: Typography.fontWeights.medium,
+    fontSize: 12,
+    fontWeight: '500',
   },
   resultsCard: {
-    backgroundColor: Colors.white,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    marginBottom: Spacing.md,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 16,
     ...Shadows.md,
+    borderWidth: 1,
+    borderColor: Colors.gray200,
   },
   resultsCardTitle: {
-    fontSize: Typography.fontSizes.md,
-    fontWeight: Typography.fontWeights.semibold,
+    fontSize: 16,
+    fontWeight: '600',
     color: Colors.textPrimary,
-    marginBottom: Spacing.md,
+    marginBottom: 16,
   },
   currentPrediction: {
-    marginBottom: Spacing.lg,
+    marginBottom: 20,
   },
   currentPredictionLabel: {
-    fontSize: Typography.fontSizes.sm,
+    fontSize: 12,
     color: Colors.textSecondary,
-    marginBottom: Spacing.sm,
+    marginBottom: 8,
   },
   currentPredictionBox: {
-    backgroundColor: 'rgba(13, 110, 253, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(13, 110, 253, 0.2)',
-    borderRadius: BorderRadius.md,
-    padding: Spacing.lg,
+    backgroundColor: 'rgba(78, 205, 196, 0.08)',
+    borderWidth: 2,
+    borderColor: 'rgba(78, 205, 196, 0.2)',
+    borderRadius: 12,
+    padding: 20,
     alignItems: 'center',
   },
   waitingBox: {
@@ -1065,79 +1103,81 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(220, 53, 69, 0.2)',
   },
   currentPredictionText: {
-    fontSize: Typography.fontSizes.xxl,
-    fontWeight: Typography.fontWeights.bold,
+    fontSize: 24,
+    fontWeight: 'bold',
     color: Colors.primary,
   },
   waitingText: {
     color: Colors.warning,
-    fontSize: Typography.fontSizes.lg,
+    fontSize: 16,
   },
   stoppedText: {
     color: Colors.gray500,
-    fontSize: Typography.fontSizes.lg,
+    fontSize: 16,
   },
   warningText: {
     color: Colors.error,
-    fontSize: Typography.fontSizes.md,
+    fontSize: 14,
   },
   top3Container: {
-    marginTop: Spacing.sm,
+    marginTop: 8,
   },
   top3Title: {
-    fontSize: Typography.fontSizes.sm,
+    fontSize: 12,
     color: Colors.textSecondary,
-    marginBottom: Spacing.md,
+    marginBottom: 12,
   },
   predictionItem: {
-    marginBottom: Spacing.md,
+    marginBottom: 12,
   },
   predictionLabelRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing.xs,
+    marginBottom: 4,
   },
   predictionRank: {
-    fontSize: Typography.fontSizes.md,
+    fontSize: 14,
     color: Colors.textPrimary,
   },
   confidenceBadge: {
     paddingVertical: 2,
-    paddingHorizontal: Spacing.sm,
-    borderRadius: BorderRadius.sm,
+    paddingHorizontal: 8,
+    borderRadius: 6,
   },
   confidenceText: {
     color: Colors.white,
-    fontSize: Typography.fontSizes.xs,
-    fontWeight: Typography.fontWeights.semibold,
+    fontSize: 10,
+    fontWeight: '600',
   },
   progressBarContainer: {
-    height: 20,
+    height: 6,
     backgroundColor: 'rgba(0,0,0,0.1)',
-    borderRadius: BorderRadius.sm,
+    borderRadius: 3,
     overflow: 'hidden',
   },
   progressBar: {
     height: '100%',
-    borderRadius: BorderRadius.sm,
+    borderRadius: 3,
   },
   historyCard: {
-    backgroundColor: Colors.white,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    marginBottom: Spacing.md,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 16,
     ...Shadows.sm,
+    borderWidth: 1,
+    borderColor: Colors.gray200,
   },
   historyHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing.sm,
+    marginBottom: 8,
   },
   historyTitle: {
-    fontSize: Typography.fontSizes.md,
-    fontWeight: Typography.fontWeights.semibold,
+    fontSize: 16,
+    fontWeight: '600',
     color: Colors.textPrimary,
   },
   historyContent: {
@@ -1145,36 +1185,38 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   historyText: {
-    fontSize: Typography.fontSizes.lg,
+    fontSize: 16,
     color: Colors.textPrimary,
-    lineHeight: 28,
+    lineHeight: 24,
   },
   historyPlaceholder: {
-    fontSize: Typography.fontSizes.md,
+    fontSize: 14,
     color: Colors.gray400,
     fontStyle: 'italic',
   },
   instructionsCard: {
-    backgroundColor: Colors.white,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    marginBottom: Spacing.xl,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 120,
     ...Shadows.sm,
+    borderWidth: 1,
+    borderColor: Colors.gray200,
   },
   instructionsTitle: {
-    fontSize: Typography.fontSizes.md,
-    fontWeight: Typography.fontWeights.semibold,
+    fontSize: 16,
+    fontWeight: '600',
     color: Colors.textPrimary,
-    marginBottom: Spacing.md,
+    marginBottom: 12,
   },
   instructionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: Spacing.sm,
-    gap: Spacing.sm,
+    marginBottom: 10,
+    gap: 12,
   },
   instructionText: {
-    fontSize: Typography.fontSizes.sm,
+    fontSize: 14,
     color: Colors.textSecondary,
     flex: 1,
   },

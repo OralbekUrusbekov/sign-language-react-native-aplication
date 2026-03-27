@@ -155,6 +155,8 @@ export interface UserSettings {
   notifications_enabled: boolean;  // notifications емес
   auto_speak: boolean;  // autoSpeak емес
   camera_quality: 'low' | 'medium' | 'high';
+  listening_language: 'kk' | 'kz' | 'ru' | 'en';  // Тыңдау тілін қосу
+  
 }
 
 // ==========================================

@@ -455,10 +455,10 @@ export const textToSpeech = async (
 
 // services/api.ts - speechToText функциясына қосымша логтар
 
+// services/api.ts - speechToText функциясының жаңартылған нұсқасы
+
 export const speechToText = async (audioUri: string, language: string = 'kz'): Promise<string> => {
   const componentName = 'speechToText';
-  
-
   
   try {
     const fileInfo = await FileSystem.getInfoAsync(audioUri);
@@ -471,13 +471,10 @@ export const speechToText = async (audioUri: string, language: string = 'kz'): P
     const formData = new FormData();
     
     const filename = audioUri.split('/').pop() || 'recording.m4a';
-    const mimeType = 'audio/m4a';
     
-    
-    const normalizedUri =
-  Platform.OS === 'android'
-    ? audioUri
-    : audioUri.replace('file://', '');
+    const normalizedUri = Platform.OS === 'android'
+      ? audioUri
+      : audioUri.replace('file://', '');
 
     formData.append('audio', {
       uri: normalizedUri,
@@ -485,9 +482,11 @@ export const speechToText = async (audioUri: string, language: string = 'kz'): P
       name: 'recording.m4a',
     } as any);
     
+    // ЖАҢА: Тілді FormData арқылы жіберу (Form арқылы қабылданатын endpoint үшін)
     formData.append('language', language);
     
-    
+    // Дұрыс language мәнін логтау
+    console.log(`[${componentName}] Жіберілетін тіл: ${language}`);
     
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
@@ -496,15 +495,15 @@ export const speechToText = async (audioUri: string, language: string = 'kz'): P
     }, 30000);
 
     const response = await fetch(API_ENDPOINTS.SPEECH_TO_TEXT, {
-  method: 'POST',
-  body: formData,
-  signal: controller.signal,
-});
+      method: 'POST',
+      body: formData,
+      signal: controller.signal,
+    });
 
     clearTimeout(timeoutId);
 
-
     const responseText = await response.text();
+    console.log(`[${componentName}] Сервер жауабы:`, responseText);
 
     if (!response.ok) {
       throw new Error(`STT API қатесі: ${response.status} - ${responseText}`);
@@ -518,8 +517,6 @@ export const speechToText = async (audioUri: string, language: string = 'kz'): P
       throw new Error('Сервер жауабын парсингтеу мүмкін емес');
     }
     
-
-    
     return data.text || data.transcription || data.result || JSON.stringify(data);
 
   } catch (error: any) {
@@ -531,6 +528,7 @@ export const speechToText = async (audioUri: string, language: string = 'kz'): P
     throw error;
   }
 };
+
 
 // Get speech history
 export const getSpeechHistory = async (deviceId: string, limit: number = 50): Promise<any[]> => {
@@ -742,6 +740,7 @@ const getDefaultSettings = (): UserSettings => ({
   notifications_enabled: true,
   auto_speak: true,
   camera_quality: 'high',
+  listening_language: 'kz',
 });
 
 // ==========================================

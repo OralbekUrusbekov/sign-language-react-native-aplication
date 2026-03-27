@@ -1,3 +1,4 @@
+// app/speech-to-text.tsx (өзгертілген бөліктер)
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
@@ -24,6 +25,8 @@ import { useSpeechTranslation } from '@/i18n/speech-to-text';
 
 export default function SpeechToTextScreen() {
   const { t } = useSpeechTranslation();
+  const { listeningLanguage } = useSettings(); // Жаңа: тыңдау тілін контексттен алу
+  
   const [isListening, setIsListening] = useState(false);
   const [currentText, setCurrentText] = useState('');
   const [history, setHistory] = useState<SpeechResult[]>([]);
@@ -32,10 +35,16 @@ export default function SpeechToTextScreen() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showDebug, setShowDebug] = useState(__DEV__);
+  const [currentLanguage, setCurrentLanguage] = useState(listeningLanguage); // Ағымдағы тіл
 
   useEffect(() => {
     initializeComponent();
   }, []);
+
+  // Тыңдау тілі өзгергенде жаңарту
+  useEffect(() => {
+    setCurrentLanguage(listeningLanguage);
+  }, [listeningLanguage]);
 
   useEffect(() => {
     if (isListening) {
@@ -182,7 +191,8 @@ export default function SpeechToTextScreen() {
         throw new Error(t('audioFileNotFound'));
       }
       
-      const text = await speechToText(uri, 'kz');
+      // ЖАҢА: Тыңдау тілін speech-to-text API-ға жіберу
+      const text = await speechToText(uri, currentLanguage);
           
       if (text && text.trim()) {
         setCurrentText(text);
@@ -197,10 +207,10 @@ export default function SpeechToTextScreen() {
         
         setHistory(prev => [newResult, ...prev].slice(0, 20));
         
-        // Backend-ке сақтау
+        // Backend-ке сақтау (тілді де сақтау)
         if (DEVICE_ID) {
           try {
-            await saveSpeechHistory(DEVICE_ID, text, 'kz', 0.9);
+            await saveSpeechHistory(DEVICE_ID, text, currentLanguage, 0.9);
           } catch (saveError) {
             console.log('Error saving to backend:', saveError);
           }
@@ -286,6 +296,16 @@ export default function SpeechToTextScreen() {
     });
   };
 
+  // Тіл атауын алу
+  const getLanguageName = (lang: string) => {
+    switch (lang) {
+      case 'kz': return 'Қазақша';
+      case 'ru': return 'Русский';
+      case 'en': return 'English';
+      default: return 'Қазақша';
+    }
+  };
+
   if (isLoading) {
     return (
       <View style={[styles.container, styles.centerContent]}>
@@ -303,6 +323,13 @@ export default function SpeechToTextScreen() {
           <Text style={styles.headerTitle}>{t('title')}</Text>
         </View>
         <Text style={styles.headerSubtitle}>{t('subtitle')}</Text>
+        {/* ЖАҢА: Ағымдағы тыңдау тілін көрсету */}
+        <View style={styles.languageBadge}>
+          <Ionicons name="ear-outline" size={16} color={Colors.white} />
+          <Text style={styles.languageBadgeText}>
+            {t('listening')}: {getLanguageName(currentLanguage)}
+          </Text>
+        </View>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -321,12 +348,12 @@ export default function SpeechToTextScreen() {
           </View>
           
           <View style={styles.currentTextContainer}>
-            {currentText ? (
+            {currentText ? ( 
               <Text style={styles.currentText}>{currentText}</Text>
             ) : (
               <Text style={styles.placeholderText}>
                 {isListening
-                  ? t('speakNow')
+                  ? `${t('speakNow')} (${getLanguageName(currentLanguage)})`
                   : t('startSpeaking')}
               </Text>
             )}
@@ -435,6 +462,10 @@ export default function SpeechToTextScreen() {
   );
 }
 
+
+// app/speech-to-text.tsx (стильдер бөлігі)
+import { scaleWidth, scaleHeight, scaleFont, spacing, borderRadius, fontSize } from '@/constants/responsive';
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -445,15 +476,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    marginTop: Spacing.md,
-    fontSize: Typography.fontSizes.md,
+    marginTop: spacing.md,
+    fontSize: fontSize.md,
     color: Colors.textSecondary,
   },
+  languageBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+    marginTop: spacing.sm,
+    alignSelf: 'flex-start',
+    gap: spacing.xs,
+  },
+  languageBadgeText: {
+    color: Colors.white,
+    fontSize: fontSize.xs,
+    fontWeight: Typography.fontWeights.medium,
+  },
   header: {
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.md,
-    backgroundColor: Colors.accent,
+    paddingTop: Platform.OS === 'ios' ? scaleHeight(60) : scaleHeight(40),
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+    backgroundColor: Colors.primary,
+    borderBottomLeftRadius: borderRadius.xxl,
+    borderBottomRightRadius: borderRadius.xxl,
   },
   headerRow: {
     flexDirection: 'row',
@@ -461,82 +510,84 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: Typography.fontSizes.xxl,
+    fontSize: fontSize.xxl,
     fontWeight: Typography.fontWeights.bold,
     color: Colors.white,
   },
   headerSubtitle: {
-    fontSize: Typography.fontSizes.sm,
+    fontSize: fontSize.sm,
     color: Colors.white,
     opacity: 0.8,
-    marginTop: Spacing.xs,
+    marginTop: spacing.xs,
   },
   debugButton: {
-    padding: Spacing.sm,
+    padding: spacing.sm,
   },
   content: {
     flex: 1,
   },
   sectionTitle: {
-    fontSize: Typography.fontSizes.lg,
+    fontSize: fontSize.lg,
     fontWeight: Typography.fontWeights.semibold,
     color: Colors.textPrimary,
   },
   currentContainer: {
-    margin: Spacing.md,
-    backgroundColor: Colors.white,
-    borderRadius: BorderRadius.xl,
-    padding: Spacing.lg,
+    margin: spacing.md,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
     ...Shadows.md,
+    borderWidth: 1,
+    borderColor: Colors.gray200,
   },
   currentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing.md,
+    marginBottom: spacing.md,
   },
   listeningBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.error,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
   },
   listeningDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: scaleWidth(8),
+    height: scaleWidth(8),
+    borderRadius: scaleWidth(4),
     backgroundColor: Colors.white,
-    marginRight: Spacing.xs,
+    marginRight: spacing.xs,
   },
   processingDot: {
     backgroundColor: Colors.warning,
   },
   listeningText: {
     color: Colors.white,
-    fontSize: Typography.fontSizes.xs,
+    fontSize: fontSize.xs,
     fontWeight: Typography.fontWeights.medium,
   },
   currentTextContainer: {
-    minHeight: 100,
+    minHeight: scaleHeight(100),
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: Spacing.lg,
+    paddingVertical: spacing.lg,
     borderWidth: 2,
     borderColor: Colors.gray200,
     borderStyle: 'dashed',
-    borderRadius: BorderRadius.lg,
+    borderRadius: borderRadius.lg,
   },
   currentText: {
-    fontSize: Typography.fontSizes.xl,
+    fontSize: fontSize.xl,
     fontWeight: Typography.fontWeights.medium,
     color: Colors.textPrimary,
     textAlign: 'center',
-    lineHeight: 32,
+    lineHeight: scaleHeight(32),
   },
   placeholderText: {
-    fontSize: Typography.fontSizes.md,
+    fontSize: fontSize.md,
     color: Colors.gray400,
     fontStyle: 'italic',
     textAlign: 'center',
@@ -545,23 +596,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: Spacing.md,
-    paddingVertical: Spacing.sm,
-    gap: Spacing.xs,
+    marginTop: spacing.md,
+    paddingVertical: spacing.sm,
+    gap: spacing.xs,
   },
   copyButtonText: {
     color: Colors.primary,
-    fontSize: Typography.fontSizes.sm,
+    fontSize: fontSize.sm,
     fontWeight: Typography.fontWeights.medium,
   },
   microphoneContainer: {
     alignItems: 'center',
-    paddingVertical: Spacing.xl,
+    paddingVertical: spacing.xl,
   },
   microphoneRing: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: scaleWidth(120),
+    height: scaleWidth(120),
+    borderRadius: scaleWidth(60),
     backgroundColor: Colors.gray200,
     justifyContent: 'center',
     alignItems: 'center',
@@ -570,9 +621,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 107, 107, 0.2)',
   },
   microphoneButton: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: scaleWidth(100),
+    height: scaleWidth(100),
+    borderRadius: scaleWidth(50),
     backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
@@ -585,49 +636,49 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.gray400,
   },
   microphoneHint: {
-    marginTop: Spacing.md,
-    fontSize: Typography.fontSizes.sm,
+    marginTop: spacing.md,
+    fontSize: fontSize.sm,
     color: Colors.textSecondary,
   },
   tipsContainer: {
-    marginHorizontal: Spacing.md,
-    marginBottom: Spacing.lg,
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.lg,
     backgroundColor: Colors.white,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
     ...Shadows.sm,
   },
   tipsTitle: {
-    fontSize: Typography.fontSizes.md,
+    fontSize: fontSize.md,
     fontWeight: Typography.fontWeights.semibold,
     color: Colors.textPrimary,
-    marginBottom: Spacing.md,
+    marginBottom: spacing.md,
   },
   tipItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
-    marginBottom: Spacing.sm,
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
   },
   tipText: {
-    fontSize: Typography.fontSizes.sm,
+    fontSize: fontSize.sm,
     color: Colors.textSecondary,
   },
   historyContainer: {
-    marginHorizontal: Spacing.md,
-    marginBottom: Spacing.md,
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.md,
   },
   historyHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing.md,
+    marginBottom: spacing.md,
   },
   historyItem: {
     backgroundColor: Colors.white,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    marginBottom: Spacing.sm,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -635,34 +686,34 @@ const styles = StyleSheet.create({
   },
   historyItemContent: {
     flex: 1,
-    marginRight: Spacing.md,
+    marginRight: spacing.md,
   },
   historyText: {
-    fontSize: Typography.fontSizes.md,
+    fontSize: fontSize.md,
     color: Colors.textPrimary,
-    marginBottom: Spacing.xs,
+    marginBottom: spacing.xs,
   },
   historyTime: {
-    fontSize: Typography.fontSizes.xs,
+    fontSize: fontSize.xs,
     color: Colors.gray400,
   },
   historyItemActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
+    gap: spacing.sm,
   },
   confidenceBadge: {
     backgroundColor: Colors.gray100,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
-    borderRadius: BorderRadius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: scaleHeight(2),
+    borderRadius: borderRadius.sm,
   },
   confidenceText: {
-    fontSize: Typography.fontSizes.xs,
+    fontSize: fontSize.xs,
     color: Colors.textSecondary,
     fontWeight: Typography.fontWeights.medium,
   },
   bottomPadding: {
-    height: 100,
+    height: scaleHeight(100),
   },
 });

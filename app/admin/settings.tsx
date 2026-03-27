@@ -1,3 +1,4 @@
+// app/admin/settings.tsx
 import React, { useState } from 'react';
 import {
   View,
@@ -11,23 +12,34 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import {
+  scaleWidth,
+  scaleHeight,
+  scaleFont,
+  spacing,
+  borderRadius,
+  isMobile,
+  getContentPadding,
+  getButtonHeight,
+  responsiveFont,
+} from '@/constants/admin-responsive';
 
-// Admin Theme Colors
+// TYNDAU Admin Theme Colors
 const AdminColors = {
-  background: '#0a0a0a',
-  surface: '#141414',
-  surfaceHover: '#1a1a1a',
-  border: '#262626',
+  background: '#0D1F33',
+  surface: '#1E3A5F',
+  surfaceHover: '#2E5A8F',
+  border: '#2E5A8F',
   primary: '#4ECDC4',
-  primaryDark: '#3EBDB4',
-  secondary: '#1E3A5F',
+  primaryDark: '#2EAD9F',
+  secondary: '#6EE7DE',
   text: '#ffffff',
-  textSecondary: '#a1a1aa',
-  textMuted: '#71717a',
-  success: '#22c55e',
-  warning: '#f59e0b',
-  error: '#ef4444',
-  info: '#3b82f6',
+  textSecondary: '#CBD5E1',
+  textMuted: '#94A3B8',
+  success: '#10B981',
+  warning: '#F59E0B',
+  error: '#EF4444',
+  info: '#3B82F6',
 };
 
 export default function AdminSettings() {
@@ -90,7 +102,7 @@ export default function AdminSettings() {
             <Text style={styles.pageSubtitle}>Баптаулар - Жүйе конфигурациясы</Text>
           </View>
           <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-            <Ionicons name="checkmark" size={18} color={AdminColors.background} />
+            <Ionicons name="checkmark" size={scaleWidth(18)} color={AdminColors.background} />
             <Text style={styles.saveButtonText}>Сақтау</Text>
           </TouchableOpacity>
         </View>
@@ -99,7 +111,7 @@ export default function AdminSettings() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionIconContainer}>
-              <Ionicons name="server-outline" size={20} color={AdminColors.primary} />
+              <Ionicons name="server-outline" size={scaleWidth(20)} color={AdminColors.primary} />
             </View>
             <View>
               <Text style={styles.sectionTitle}>API конфигурациясы</Text>
@@ -119,7 +131,7 @@ export default function AdminSettings() {
                   onChangeText={setApiUrl}
                 />
                 <TouchableOpacity style={styles.testButton} onPress={handleTestConnection}>
-                  <Ionicons name="flash-outline" size={18} color={AdminColors.warning} />
+                  <Ionicons name="flash-outline" size={scaleWidth(18)} color={AdminColors.warning} />
                   <Text style={styles.testButtonText}>Тексеру</Text>
                 </TouchableOpacity>
               </View>
@@ -144,7 +156,7 @@ export default function AdminSettings() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionIconContainer}>
-              <Ionicons name="settings-outline" size={20} color={AdminColors.info} />
+              <Ionicons name="settings-outline" size={scaleWidth(20)} color={AdminColors.info} />
             </View>
             <View>
               <Text style={styles.sectionTitle}>Жалпы баптаулар</Text>
@@ -211,7 +223,7 @@ export default function AdminSettings() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionIconContainer}>
-              <Ionicons name="speedometer-outline" size={20} color={AdminColors.success} />
+              <Ionicons name="speedometer-outline" size={scaleWidth(20)} color={AdminColors.success} />
             </View>
             <View>
               <Text style={styles.sectionTitle}>Өнімділік</Text>
@@ -247,12 +259,12 @@ export default function AdminSettings() {
             </View>
 
             <TouchableOpacity style={styles.actionButton} onPress={handleClearCache}>
-              <Ionicons name="trash-outline" size={20} color={AdminColors.error} />
+              <Ionicons name="trash-outline" size={scaleWidth(20)} color={AdminColors.error} />
               <View style={styles.actionButtonInfo}>
                 <Text style={styles.actionButtonLabel}>Кэшті тазалау</Text>
                 <Text style={styles.actionButtonDescription}>Барлық кэш деректерін жою</Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color={AdminColors.textMuted} />
+              <Ionicons name="chevron-forward" size={scaleWidth(20)} color={AdminColors.textMuted} />
             </TouchableOpacity>
           </View>
         </View>
@@ -261,7 +273,7 @@ export default function AdminSettings() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionIconContainer}>
-              <Ionicons name="folder-outline" size={20} color={AdminColors.warning} />
+              <Ionicons name="folder-outline" size={scaleWidth(20)} color={AdminColors.warning} />
             </View>
             <View>
               <Text style={styles.sectionTitle}>Деректерді басқару</Text>
@@ -271,21 +283,21 @@ export default function AdminSettings() {
 
           <View style={styles.sectionContent}>
             <TouchableOpacity style={styles.actionButton} onPress={handleExportData}>
-              <Ionicons name="download-outline" size={20} color={AdminColors.primary} />
+              <Ionicons name="download-outline" size={scaleWidth(20)} color={AdminColors.primary} />
               <View style={styles.actionButtonInfo}>
                 <Text style={styles.actionButtonLabel}>Деректерді экспорттау</Text>
                 <Text style={styles.actionButtonDescription}>JSON форматында жүктеу</Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color={AdminColors.textMuted} />
+              <Ionicons name="chevron-forward" size={scaleWidth(20)} color={AdminColors.textMuted} />
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionButton} onPress={handleImportData}>
-              <Ionicons name="cloud-upload-outline" size={20} color={AdminColors.info} />
+              <Ionicons name="cloud-upload-outline" size={scaleWidth(20)} color={AdminColors.info} />
               <View style={styles.actionButtonInfo}>
                 <Text style={styles.actionButtonLabel}>Деректерді импорттау</Text>
                 <Text style={styles.actionButtonDescription}>JSON файлын жүктеу</Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color={AdminColors.textMuted} />
+              <Ionicons name="chevron-forward" size={scaleWidth(20)} color={AdminColors.textMuted} />
             </TouchableOpacity>
           </View>
         </View>
@@ -294,7 +306,7 @@ export default function AdminSettings() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionIconContainer}>
-              <Ionicons name="information-circle-outline" size={20} color={AdminColors.textMuted} />
+              <Ionicons name="information-circle-outline" size={scaleWidth(20)} color={AdminColors.textMuted} />
             </View>
             <View>
               <Text style={styles.sectionTitle}>Жүйе ақпараты</Text>
@@ -321,8 +333,6 @@ export default function AdminSettings() {
             </View>
           </View>
         </View>
-
-  
       </View>
     </ScrollView>
   );
@@ -334,101 +344,100 @@ const styles = StyleSheet.create({
     backgroundColor: AdminColors.background,
   },
   content: {
-    padding: 24,
-    paddingBottom: 48,
+    padding: getContentPadding(),
+    paddingBottom: spacing.xxl,
   },
   pageHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 24,
+    marginBottom: spacing.xl,
+    flexWrap: 'wrap',
+    gap: spacing.md,
   },
   pageTitle: {
-    fontSize: 28,
+    fontSize: isMobile ? scaleFont(24) : scaleFont(28),
     fontWeight: '700',
     color: AdminColors.text,
-    marginBottom: 4,
+    marginBottom: spacing.xxs,
   },
   pageSubtitle: {
-    fontSize: 14,
+    fontSize: scaleFont(14),
     color: AdminColors.textMuted,
   },
   saveButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: spacing.md,
+    paddingVertical: scaleHeight(10),
     backgroundColor: AdminColors.primary,
-    borderRadius: 10,
-    gap: 8,
+    borderRadius: borderRadius.md,
+    gap: spacing.xs,
   },
   saveButtonText: {
     color: AdminColors.background,
-    fontSize: 14,
+    fontSize: scaleFont(14),
     fontWeight: '600',
   },
   section: {
     backgroundColor: AdminColors.surface,
-    borderRadius: 16,
+    borderRadius: borderRadius.xl,
     borderWidth: 1,
     borderColor: AdminColors.border,
-    marginBottom: 16,
+    marginBottom: spacing.md,
     overflow: 'hidden',
-  },
-  dangerSection: {
-    borderColor: `${AdminColors.error}30`,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
+    padding: spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: AdminColors.border,
-    gap: 14,
+    gap: spacing.md,
   },
   sectionIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+    width: scaleWidth(40),
+    height: scaleWidth(40),
+    borderRadius: borderRadius.md,
     backgroundColor: `${AdminColors.primary}15`,
     justifyContent: 'center',
     alignItems: 'center',
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: scaleFont(16),
     fontWeight: '600',
     color: AdminColors.text,
   },
   sectionSubtitle: {
-    fontSize: 12,
+    fontSize: scaleFont(12),
     color: AdminColors.textMuted,
-    marginTop: 2,
+    marginTop: scaleHeight(2),
   },
   sectionContent: {
-    padding: 20,
-    gap: 16,
+    padding: spacing.lg,
+    gap: spacing.md,
   },
   formGroup: {
-    gap: 8,
+    gap: spacing.xs,
   },
   formLabel: {
-    fontSize: 13,
+    fontSize: scaleFont(13),
     fontWeight: '500',
     color: AdminColors.textSecondary,
   },
   formInput: {
     backgroundColor: AdminColors.background,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 14,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: scaleHeight(14),
+    fontSize: scaleFont(14),
     color: AdminColors.text,
     borderWidth: 1,
     borderColor: AdminColors.border,
   },
   inputWithButton: {
     flexDirection: 'row',
-    gap: 10,
+    gap: spacing.sm,
   },
   inputFlex: {
     flex: 1,
@@ -436,77 +445,74 @@ const styles = StyleSheet.create({
   testButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.md,
     backgroundColor: `${AdminColors.warning}15`,
-    borderRadius: 10,
-    gap: 8,
+    borderRadius: borderRadius.md,
+    gap: spacing.xs,
   },
   testButtonText: {
-    fontSize: 14,
+    fontSize: scaleFont(14),
     color: AdminColors.warning,
     fontWeight: '500',
   },
   formHint: {
-    fontSize: 12,
+    fontSize: scaleFont(12),
     color: AdminColors.textMuted,
   },
   toggleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 4,
+    paddingVertical: scaleHeight(4),
   },
   toggleInfo: {
     flex: 1,
   },
   toggleLabel: {
-    fontSize: 14,
+    fontSize: scaleFont(14),
     fontWeight: '500',
     color: AdminColors.text,
   },
   toggleDescription: {
-    fontSize: 12,
+    fontSize: scaleFont(12),
     color: AdminColors.textMuted,
-    marginTop: 2,
+    marginTop: scaleHeight(2),
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    padding: spacing.md,
     backgroundColor: AdminColors.surfaceHover,
-    borderRadius: 12,
-    gap: 14,
-  },
-  dangerButton: {
-    backgroundColor: `${AdminColors.error}08`,
+    borderRadius: borderRadius.lg,
+    gap: spacing.md,
   },
   actionButtonInfo: {
     flex: 1,
   },
   actionButtonLabel: {
-    fontSize: 14,
+    fontSize: scaleFont(14),
     fontWeight: '500',
     color: AdminColors.text,
   },
   actionButtonDescription: {
-    fontSize: 12,
+    fontSize: scaleFont(12),
     color: AdminColors.textMuted,
-    marginTop: 2,
+    marginTop: scaleHeight(2),
   },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: scaleHeight(10),
     borderBottomWidth: 1,
     borderBottomColor: AdminColors.border,
   },
   infoLabel: {
-    fontSize: 14,
+    fontSize: scaleFont(14),
     color: AdminColors.textSecondary,
   },
   infoValue: {
-    fontSize: 14,
+    fontSize: scaleFont(14),
     fontWeight: '500',
     color: AdminColors.text,
   },
