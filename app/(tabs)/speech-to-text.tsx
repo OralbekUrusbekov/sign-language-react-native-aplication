@@ -1,4 +1,3 @@
-// app/speech-to-text.tsx (өзгертілген бөліктер)
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
@@ -25,8 +24,7 @@ import { useSpeechTranslation } from '@/i18n/speech-to-text';
 
 export default function SpeechToTextScreen() {
   const { t } = useSpeechTranslation();
-  const { listeningLanguage } = useSettings(); // Жаңа: тыңдау тілін контексттен алу
-  
+  const { listeningLanguage } = useSettings(); 
   const [isListening, setIsListening] = useState(false);
   const [currentText, setCurrentText] = useState('');
   const [history, setHistory] = useState<SpeechResult[]>([]);
@@ -35,13 +33,12 @@ export default function SpeechToTextScreen() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showDebug, setShowDebug] = useState(__DEV__);
-  const [currentLanguage, setCurrentLanguage] = useState(listeningLanguage); // Ағымдағы тіл
+  const [currentLanguage, setCurrentLanguage] = useState(listeningLanguage); 
 
   useEffect(() => {
     initializeComponent();
   }, []);
 
-  // Тыңдау тілі өзгергенде жаңарту
   useEffect(() => {
     setCurrentLanguage(listeningLanguage);
   }, [listeningLanguage]);

@@ -32,7 +32,6 @@ const overlayWidth = width - 32;
 const cameraActualWidth = CAMERA_HEIGHT * (3 / 4);
 const xOffset = (overlayWidth - cameraActualWidth) / 2;
 
-// ==================== DEBUG LOGGING ====================
 const DEBUG = true;
 const log = (...args: any[]) => {
   if (DEBUG) {
@@ -49,11 +48,8 @@ interface Prediction {
 }
 
 export default function SignLanguageScreen() {
-  log('📱 Component mounted');
-
   const { appLanguage } = useSettings();
   const { t } = useSignTranslation();
-
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState<CameraType>('front');
   const [isRunning, setIsRunning] = useState(false);
@@ -68,7 +64,6 @@ export default function SignLanguageScreen() {
   const [landmarks, setLandmarks] = useState<any>(null);
   const [bufferStatus, setBufferStatus] = useState<{ frames: number; needed: number } | null>(null);
   const [landmarksDetected, setLandmarksDetected] = useState({ pose: false, hands: false });
-  
   const cameraRef = useRef<any>(null);
   const frameIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const fpsTimerRef = useRef<number>(Date.now());
@@ -76,26 +71,24 @@ export default function SignLanguageScreen() {
   const isRunningRef = useRef(false);
   const isProcessingRef = useRef(false);
 
-  // ==================== POSE & HAND CONNECTIONS ====================
   const poseConnections = [
-    [11, 12], // shoulders
-    [11, 13], [13, 15], // left arm
-    [12, 14], [14, 16], // right arm
-    [11, 23], [12, 24], // torso
-    [23, 24], // hips
-    [23, 25], [25, 27], // left leg
-    [24, 26], [26, 28], // right leg
+    [11, 12], 
+    [11, 13], [13, 15], 
+    [12, 14], [14, 16], 
+    [11, 23], [12, 24], 
+    [23, 24], 
+    [23, 25], [25, 27], 
+    [24, 26], [26, 28], 
   ];
 
   const handConnections = [
-    [0,1],[1,2],[2,3],[3,4], // thumb
-    [0,5],[5,6],[6,7],[7,8], // index
-    [0,9],[9,10],[10,11],[11,12], // middle
-    [0,13],[13,14],[14,15],[15,16], // ring
-    [0,17],[17,18],[18,19],[19,20] // pinky
+    [0,1],[1,2],[2,3],[3,4], 
+    [0,5],[5,6],[6,7],[7,8],
+    [0,9],[9,10],[10,11],[11,12], 
+    [0,13],[13,14],[14,15],[15,16], 
+    [0,17],[17,18],[18,19],[19,20] 
   ];
   
-  // ==================== CHECK CONNECTION ====================
   const checkConnection = useCallback(async () => {
     log('🌐 Checking server connection...');
     try {

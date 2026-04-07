@@ -29,7 +29,7 @@ import {
 
 const { width } = Dimensions.get('window');
 
-// TYNDAU Admin Theme Colors
+
 const AdminColors = {
   background: '#0D1F33',
   surface: '#1E3A5F',

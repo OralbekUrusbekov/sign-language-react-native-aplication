@@ -25,7 +25,6 @@ import { DEVICE_ID, API_BASE_URL } from '@/config/api';
 import { useSettings } from '@/context/SettingsContext';
 import { useLibraryTranslation } from '@/i18n/library';
 
-// Сақталған кітаптар кілті
 const STORAGE_KEYS = {
   DOWNLOADED_BOOKS: '@library_downloaded_books',
 };
@@ -43,20 +42,15 @@ export default function LibraryScreen() {
   const [downloadedBooks, setDownloadedBooks] = useState<Map<string, string>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
 
-  // Категория атауларын аудару
   const getCategoryName = useCallback((categoryId: string, originalName: string) => {
     const categoryKey = categoryId.replace(/-/g, '_');
     const translated = t(`categories.${categoryKey}`);
-    
-    // Егер аударма табылмаса, оригинал атауды қайтару
     return translated !== `categories.${categoryKey}` ? translated : originalName;
   }, [t]);
 
   useEffect(() => {
     loadData();
-  }, [appLanguage]); // Тіл ауысқанда қайта жүктеу
-
-  // Сақталған жүктеулерді жүктеу
+  }, [appLanguage]); 
   const loadSavedDownloads = useCallback(async () => {
     try {
       const saved = await AsyncStorage.getItem(STORAGE_KEYS.DOWNLOADED_BOOKS);
@@ -78,7 +72,6 @@ export default function LibraryScreen() {
     }
   }, []);
 
-  // Жүктеулерді сақтау
   const saveDownloads = useCallback(async (map: Map<string, string>) => {
     try {
       const array = Array.from(map.entries()).map(([bookId, filePath]) => ({

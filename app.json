@@ -39,14 +39,21 @@
     "plugins": [
       "expo-router",
       [
-      "react-native-vision-camera",
-      {
-      "cameraPermissionText": "Sign language тану үшін камера қажет",
-      "enableMicrophonePermission": false
-      }
-      ],
+  "react-native-vision-camera",
+  {
+    "cameraPermissionText": "Sign language тану үшін камера қажет",
+    "enableMicrophonePermission": false,
+    "enableFrameProcessors": false
+  }
+],
       "expo-web-browser"
     ],
-    "scheme": "signlanguageapp"
+    "scheme": "signlanguageapp",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "b5bac8e5-66e9-4d53-91d2-754a54ee1982"
+      }
+    }
   }
 }
