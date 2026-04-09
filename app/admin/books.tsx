@@ -1,4 +1,3 @@
-// app/admin/books.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,

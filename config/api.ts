@@ -1,5 +1,5 @@
-export const API_BASE_URL = 'http://10.224.11.120:8000';
-export const AI_MODEL_URL = 'http://10.224.11.120:5001';
+export const API_BASE_URL = 'http://10.115.15.120:8000';
+export const AI_MODEL_URL = 'http://10.115.15.120:5001';
 
 export const API_ENDPOINTS = {
   HEALTH: `${API_BASE_URL}/health`,
